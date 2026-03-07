@@ -1,8 +1,8 @@
-# 任务发布Agent — 糖尿病个性化健康任务管理系统
+# 任务发布Agent — 糖尿病个性化健康任务发布
 
 [English](README.md) | 中文
 
-> SG Innovation Challenge 2026 · Track 1 · Verse-Founder
+> SG Innovation Challenge 2026 · Track 1 
 
 Task Agent 是糖尿病管理平台的核心模块之一，负责为患者生成个性化的健康管理任务。
 
@@ -149,6 +149,6 @@ make coverage  # 覆盖率报告
 
 | 成员 | 仓库 | 集成方式 |
 |------|------|---------|
-| Bailey ([Health-Companion](https://github.com/baileybei/Health-Companion)) | Chatbot | 通过 `POST /api/v1/trigger/chatbot` 触发 |
-| Julia ([Diabetes_Guardian](https://github.com/juliawangjiayu/Diabetes_Guardian)) | 预警 Agent | 通过 `POST /api/v1/trigger/alert` 触发 |
-| Jamie ([SG-INNOVATION](https://github.com/Jamieee0531/SG-INNOVATION)) | Vision Agent | 食物分析结果作为 `chat_insights` 输入 |
+| baileybei ([Health-Companion](https://github.com/baileybei/Health-Companion)) | Chatbot | 通过 `POST /api/v1/trigger/chatbot` 触发 |
+| juliawangjiayu ([Diabetes_Guardian](https://github.com/juliawangjiayu/Diabetes_Guardian)) | 预警 Agent | 通过 `POST /api/v1/trigger/alert` 触发 |
+| Jamieee0531 ([SG-INNOVATION](https://github.com/Jamieee0531/SG-INNOVATION)) | Vision Agent | 食物分析结果作为 `chat_insights` 输入 |
