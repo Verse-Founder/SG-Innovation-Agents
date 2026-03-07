@@ -1,35 +1,41 @@
 """
 api/routes.py
-FastAPI 路由
+FastAPI 路由 — 接入数据库层
 """
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from typing import Optional
+
 from graph.builder import run_task_agent
+from db.session import get_session
+from db import crud
 
 router = APIRouter()
 
 
 class TriggerRequest(BaseModel):
-    """触发请求"""
     user_id: str
     trigger_source: str = "chatbot"
     payload: dict = {}
 
 
 class TaskCompleteRequest(BaseModel):
-    """任务完成请求"""
     user_id: str
     task_id: str
 
 
+class BatchCreateRequest(BaseModel):
+    user_id: str
+    tasks: list[dict]
+
+
+# ── 触发路由 ─────────────────────────────────────────────
+
 @router.post("/trigger/chatbot")
 async def trigger_from_chatbot(req: TriggerRequest):
-    """接收来自 chatbot 的 task_trigger"""
     try:
         result = run_task_agent(
-            user_id=req.user_id,
-            trigger_source="chatbot",
+            user_id=req.user_id, trigger_source="chatbot",
             trigger_payload=req.payload,
         )
         return {"status": "ok", "data": result}
@@ -39,11 +45,9 @@ async def trigger_from_chatbot(req: TriggerRequest):
 
 @router.post("/trigger/alert")
 async def trigger_from_alert(req: TriggerRequest):
-    """接收来自预警 Agent 的信号"""
     try:
         result = run_task_agent(
-            user_id=req.user_id,
-            trigger_source="alert_agent",
+            user_id=req.user_id, trigger_source="alert_agent",
             trigger_payload=req.payload,
         )
         return {"status": "ok", "data": result}
@@ -53,11 +57,9 @@ async def trigger_from_alert(req: TriggerRequest):
 
 @router.post("/trigger/doctor")
 async def trigger_from_doctor(req: TriggerRequest):
-    """接收医生端任务（预留）"""
     try:
         result = run_task_agent(
-            user_id=req.user_id,
-            trigger_source="doctor",
+            user_id=req.user_id, trigger_source="doctor",
             trigger_payload=req.payload,
         )
         return {"status": "ok", "data": result}
@@ -65,41 +67,61 @@ async def trigger_from_doctor(req: TriggerRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+# ── 数据库路由 ────────────────────────────────────────────
+
 @router.get("/tasks/{user_id}")
-async def get_user_tasks(user_id: str):
-    """查询用户当前任务列表"""
-    # 在生产环境中应从数据库查询
-    result = run_task_agent(user_id=user_id, trigger_source="system")
-    return {"status": "ok", "data": result}
+async def get_user_tasks(user_id: str, status: Optional[str] = None):
+    async with get_session() as session:
+        tasks = await crud.get_user_tasks(session, user_id, status=status)
+        if not tasks:
+            result = run_task_agent(user_id=user_id, trigger_source="system")
+            return {"status": "ok", "source": "agent", "data": result}
+        return {
+            "status": "ok",
+            "source": "db",
+            "data": [
+                {
+                    "task_id": t.id, "user_id": t.user_id,
+                    "task_type": t.task_type, "category": t.category,
+                    "title": t.title, "description": t.description,
+                    "caring_message": t.caring_message,
+                    "points": t.points, "priority": t.priority,
+                    "status": t.status,
+                    "deadline": t.deadline.isoformat() if t.deadline else None,
+                    "created_at": t.created_at.isoformat() if t.created_at else None,
+                }
+                for t in tasks
+            ],
+        }
 
 
 @router.post("/tasks/complete")
 async def complete_task(req: TaskCompleteRequest):
-    """标记任务完成，计算积分"""
-    from engine.points_engine import process_task_completion
-    from schemas.points import PointsBalance
+    async with get_session() as session:
+        completion = await crud.complete_task(session, req.task_id, req.user_id)
+        if not completion:
+            raise HTTPException(status_code=404, detail="任务不存在或不属于该用户")
+        balance = await crud.get_points_balance(session, req.user_id)
+        return {
+            "status": "ok",
+            "points_earned": completion.points_earned,
+            "new_balance": balance["current_balance"],
+            "total_earned": balance["total_earned"],
+        }
 
-    # 在生产中应从 DB 获取任务和余额
-    current_balance = PointsBalance(user_id=req.user_id)
-    transaction, updated_balance = process_task_completion(
-        user_id=req.user_id,
-        task_id=req.task_id,
-        task_category="monitoring",
-        task_type="daily_routine",
-        current_balance=current_balance,
-    )
-    return {
-        "status": "ok",
-        "points_earned": transaction.amount,
-        "new_balance": updated_balance.current_balance,
-        "streak_days": updated_balance.streak_days,
-    }
+
+@router.post("/tasks/batch")
+async def batch_create_tasks(req: BatchCreateRequest):
+    created = []
+    async with get_session() as session:
+        for task_data in req.tasks:
+            task = await crud.create_task(session, user_id=req.user_id, **task_data)
+            created.append({"task_id": task.id, "title": task.title})
+    return {"status": "ok", "created": len(created), "tasks": created}
 
 
 @router.get("/points/{user_id}")
 async def get_points(user_id: str):
-    """查询用户积分余额"""
-    from schemas.points import PointsBalance
-    # 生产环境从 DB 读取
-    balance = PointsBalance(user_id=user_id)
-    return {"status": "ok", "data": balance.model_dump()}
+    async with get_session() as session:
+        balance = await crud.get_points_balance(session, user_id)
+        return {"status": "ok", "data": balance}
