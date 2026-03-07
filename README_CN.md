@@ -149,6 +149,6 @@ make coverage  # 覆盖率报告
 
 | 成员 | 仓库 | 集成方式 |
 |------|------|---------|
-| baileybei ([Health-Companion](https://github.com/baileybei/Health-Companion)) | Chatbot | 通过 `POST /api/v1/trigger/chatbot` 触发 |
-| juliawangjiayu ([Diabetes_Guardian](https://github.com/juliawangjiayu/Diabetes_Guardian)) | 预警 Agent | 通过 `POST /api/v1/trigger/alert` 触发 |
-| Jamieee0531 ([SG-INNOVATION](https://github.com/Jamieee0531/SG-INNOVATION)) | Vision Agent | 食物分析结果作为 `chat_insights` 输入 |
+| baileybei | [Health-Companion](https://github.com/baileybei/Health-Companion) (Chatbot) | 通过 `POST /api/v1/trigger/chatbot` 触发 |
+| juliawangjiayu | [Diabetes_Guardian](https://github.com/juliawangjiayu/Diabetes_Guardian) (预警 Agent) | 通过 `POST /api/v1/trigger/alert` 触发 |
+| Jamieee0531 | [SG-INNOVATION](https://github.com/Jamieee0531/SG-INNOVATION) (Vision Agent) | 食物分析结果作为 `chat_insights` 输入 |
