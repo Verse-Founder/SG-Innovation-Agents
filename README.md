@@ -205,6 +205,6 @@ make coverage  # Tests + coverage report
 
 | Team Member | Repo | Integration |
 |-------------|------|-------------|
-| Bailey ([Health-Companion](https://github.com/baileybei/Health-Companion)) | Chatbot | Triggers via `POST /api/v1/trigger/chatbot` |
-| Julia ([Diabetes_Guardian](https://github.com/juliawangjiayu/Diabetes_Guardian)) | Alert Agent | Triggers via `POST /api/v1/trigger/alert` |
-| Jamie ([SG-INNOVATION](https://github.com/Jamieee0531/SG-INNOVATION)) | Vision Agent | Food analysis results feed into `chat_insights` |
+| baileybei ([Health-Companion](https://github.com/baileybei/Health-Companion)) | Chatbot | Triggers via `POST /api/v1/trigger/chatbot` |
+| juliawangjiayu ([Diabetes_Guardian](https://github.com/juliawangjiayu/Diabetes_Guardian)) | Alert Agent | Triggers via `POST /api/v1/trigger/alert` |
+| Jamieee0531 ([SG-INNOVATION](https://github.com/Jamieee0531/SG-INNOVATION)) | Vision Agent | Food analysis results feed into `chat_insights` |
