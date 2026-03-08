@@ -213,7 +213,7 @@ make coverage  # Tests + coverage report
 
 | Team Member | Repo | Integration |
 |-------------|------|-------------|
-| Bailey ([Health-Companion](https://github.com/baileybei/Health-Companion)) | Chatbot | Chat insights feed into reports |
-| Julia ([Diabetes_Guardian](https://github.com/juliawangjiayu/Diabetes_Guardian)) | Alert Agent | Alert data included in risk assessment |
-| Jamie ([SG-INNOVATION](https://github.com/Jamieee0531/SG-INNOVATION)) | Vision Agent | Food analysis data in reports |
-| Task Agent ([task-agent](../task-agent/)) | Task Agent | Shared DB, prescription triggers |
+| baileybei | [Health-Companion](https://github.com/baileybei/Health-Companion) (Chatbot) | Chat insights feed into reports |
+| juliawangjiayu | [Diabetes_Guardian](https://github.com/juliawangjiayu/Diabetes_Guardian) (Alert Agent) | Alert data included in risk assessment |
+| Jamieee0531 | [SG-INNOVATION](https://github.com/Jamieee0531/SG-INNOVATION) (Vision Agent) | Food analysis data in reports |
+| Verse-Founder | [task-agent](../task-agent/) (Task Agent) | Shared DB, prescription triggers |
