@@ -1,8 +1,6 @@
-# 医生端Agent — 患者健康报告生成系统
+# To医生端Agent — 患者健康报告生成系统
 
 [English](README.md) | 中文
-
-> SG Innovation Challenge 2026 · Track 1 · Verse-Founder
 
 To-Doctor Agent 是糖尿病管理平台的核心模块之一，负责将患者健康数据聚合为结构化医疗报告，桥接患者与医生之间的信息闭环。
 
@@ -127,7 +125,7 @@ make coverage  # 覆盖率报告
 
 | 成员 | 仓库 | 集成方式 |
 |------|------|---------|
-| Bailey ([Health-Companion](https://github.com/baileybei/Health-Companion)) | Chatbot | 聊天洞察纳入报告 |
-| Julia ([Diabetes_Guardian](https://github.com/juliawangjiayu/Diabetes_Guardian)) | 预警 Agent | 预警数据纳入风险评估 |
-| Jamie ([SG-INNOVATION](https://github.com/Jamieee0531/SG-INNOVATION)) | Vision Agent | 食物分析数据纳入报告 |
-| Task Agent ([task-agent](../task-agent/)) | 任务 Agent | 共享数据库，处方触发 |
+| baileybei | [Health-Companion](https://github.com/baileybei/Health-Companion) （Chatbot） | 聊天洞察纳入报告 |
+| juliawangjiayu | [Diabetes_Guardian](https://github.com/juliawangjiayu/Diabetes_Guardian) （预警 Agent） | 预警数据纳入风险评估 |
+| Jamieee0531 | [SG-INNOVATION](https://github.com/Jamieee0531/SG-INNOVATION) （Vision Agent） | 食物分析数据纳入报告 |
+| Verse-Founder | [task-agent](../task-agent/) （任务发布 Agent） | 共享数据库，处方触发 |
