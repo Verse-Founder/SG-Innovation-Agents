@@ -25,7 +25,8 @@ def risk_assessment_node(state: TaskAgentState) -> dict:
 
     # 1. AI 医学顾问分析
     risk_assessment, ai_tasks = analyze_and_generate_tasks(
-        snapshot, behavior, chat_insights
+        snapshot, behavior, chat_insights, 
+        nearby_parks=state.get("nearby_parks")
     )
 
     # 2. 肾功能专项

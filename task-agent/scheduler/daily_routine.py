@@ -7,6 +7,8 @@ import random
 from datetime import datetime, timedelta, timezone
 
 from config import settings
+from utils.llm_factory import call_sealion
+import json
 
 logger = logging.getLogger(__name__)
 
@@ -116,13 +118,13 @@ def _make_task_dict(
 def generate_daily_tasks(user_id: str = "all") -> list[dict]:
     """生成一天的固定任务"""
     tasks = []
-    goal = settings.DEFAULT_DAILY_STEPS_GOAL
+    goal = settings.DEFAULT_DAILY_CALORIES_GOAL
     msg = random.choice(CARING_MESSAGES["steps"]).format(goal=goal)
     tasks.append(_make_task_dict(
         user_id=user_id, category="exercise",
-        title="今日步数打卡",
-        description=f"目标：{goal} 步。轻到中等强度的步行就很好！",
-        caring_message=msg, points=settings.POINTS_DAILY_STEPS,
+        title="今日消耗打卡",
+        description=f"目标：{goal} kcal。轻到中等强度的运动就很好！",
+        caring_message=msg, points=settings.POINTS_DAILY_EXERCISE,
     ))
     tasks.append(_make_task_dict(
         user_id=user_id, category="monitoring",
@@ -151,7 +153,50 @@ def generate_meal_photo_task(user_id: str, meal: str) -> dict:
     )
 
 
-def generate_daily_quiz(user_id: str) -> dict:
+def generate_ai_quiz(user_id: str) -> dict:
+    """调用 LLM 生成个性化的糖尿病知识问答"""
+    prompt = """你是一位专业的糖尿病健康管理专家。请生成一道关于糖尿病日常管理的单项选择题。
+    要求：
+    1. 结合新加坡本地语境（如：Hawker Center 饮食、HDB 运动场景）。
+    2. 提供 4 个选项。
+    3. 语言像好朋友一样幽默、温暖。
+    4. 必须输出严格的 JSON 格式，不要包含反斜杠或额外描述：
+    {
+      "question": "问题内容",
+      "options": ["选A", "选B", "选C", "选D"],
+      "answer": "正确选项内容",
+      "explanation": "通俗易懂的原理解释"
+    }
+    """
+    try:
+        response = call_sealion(
+            system_prompt=prompt,
+            user_message="请为今天生成一道糖尿病小知识题。",
+            reasoning=False
+        )
+        # 清理可能存在的 markdown fence
+        clean = response.strip().replace("```json", "").replace("```", "").strip()
+        quiz_data = json.loads(clean)
+        
+        return _make_task_dict(
+            user_id=user_id, category="quiz",
+            title="每日挑战：AI 懂糖小课堂",
+            description=quiz_data["question"],
+            caring_message=random.choice(CARING_MESSAGES["quiz"]),
+            points=settings.POINTS_DAILY_QUIZ,
+            metadata={
+                "quiz_options": quiz_data["options"],
+                "quiz_answer": quiz_data["answer"],
+                "quiz_explanation": quiz_data["explanation"],
+            }
+        )
+    except Exception as e:
+        logger.error(f"AI 出题失败: {e}，回退到固定题库")
+        return generate_daily_quiz_static(user_id)
+
+
+def generate_daily_quiz_static(user_id: str) -> dict:
+    """原本的静态题库逻辑作为兜底"""
     quiz = random.choice(QUIZ_BANK)
     return _make_task_dict(
         user_id=user_id, category="quiz",
@@ -177,6 +222,26 @@ def generate_hba1c_reminder(user_id: str) -> dict:
     )
 
 
+def generate_weekly_metrics_task(user_id: str) -> list[dict]:
+    """每周一次提醒记录体重和腰围"""
+    return [
+        _make_task_dict(
+            user_id=user_id, category="monitoring",
+            title="每周体成分记录：体重",
+            description="记录一下您本周的体重，帮我们更好地计算 BMI。",
+            caring_message="体重只是一个数字，重要的是我们一起保持进步 🌱",
+            points=10, priority="medium", deadline_hours=48,
+        ),
+        _make_task_dict(
+            user_id=user_id, category="monitoring",
+            title="每周体成分记录：腰围",
+            description="记录一下您本周的腰围。腰围对评估腹部脂肪很重要哦。",
+            caring_message="关注健康细节，也是爱自己的表现 ❤️",
+            points=10, priority="medium", deadline_hours=48,
+        )
+    ]
+
+
 # ── Celery Tasks ─────────────────────────────────────────
 try:
     from scheduler.celery_app import celery_app
@@ -195,8 +260,8 @@ try:
 
     @celery_app.task(name="scheduler.daily_routine.push_daily_quiz")
     def push_daily_quiz():
-        task = generate_daily_quiz("all")
-        logger.info("[Scheduler] 推送每日一题")
+        task = generate_ai_quiz("all")
+        logger.info("[Scheduler] 推送 AI 每日一题")
         return {"task": task["title"]}
 
     @celery_app.task(name="scheduler.daily_routine.push_steps_reminder")
@@ -209,6 +274,23 @@ try:
         task = generate_hba1c_reminder("all")
         logger.info("[Scheduler] 检查 HbA1c 提醒")
         return {"task": task["title"]}
+
+    @celery_app.task(name="scheduler.daily_routine.push_weekly_metrics")
+    def push_weekly_metrics():
+        tasks = generate_weekly_metrics_task("all")
+        logger.info(f"[Scheduler] 推送 {len(tasks)} 条周常测量任务")
+        return {"count": len(tasks)}
+
+    @celery_app.task(name="scheduler.daily_routine.daily_streak_check")
+    def daily_streak_check():
+        """
+        每日凌晨核对前一日任务完成状态，更新/重置连击
+        """
+        logger.info("[Scheduler] 开始执行每日连击检查 (Streak Check)")
+        # 实际逻辑应为：
+        # 1. 遍历活跃用户
+        # 2. 调用 points_engine.check_and_update_streak(user_id)
+        return {"status": "logic_updated"}
 
 except ImportError:
     logger.warning("Celery 未安装，定时任务注册跳过")

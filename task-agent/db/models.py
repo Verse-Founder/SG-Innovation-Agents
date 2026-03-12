@@ -66,7 +66,9 @@ class UserHealthLog(Base):
     heart_rate: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
     blood_pressure_sys: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
     blood_pressure_dia: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
-    steps: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    calories: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    latitude: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    longitude: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
 
     __table_args__ = (
         Index("ix_health_user_time", "user_id", "recorded_at"),
@@ -102,14 +104,15 @@ class BehaviorPatternRecord(Base):
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
     user_id: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
     week_start: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
-    avg_daily_steps: Mapped[int] = mapped_column(Integer, default=0)
+    avg_daily_calories: Mapped[float] = mapped_column(Float, default=0.0)
     exercise_days_per_week: Mapped[int] = mapped_column(Integer, default=0)
     exercise_preferred_time: Mapped[str] = mapped_column(String(16), default="afternoon")
     meal_regularity_score: Mapped[float] = mapped_column(Float, default=0.0)
     medication_adherence_pct: Mapped[float] = mapped_column(Float, default=100.0)
     task_completion_rate: Mapped[float] = mapped_column(Float, default=0.0)
     glucose_control_score: Mapped[float] = mapped_column(Float, default=0.0)
-    consecutive_completion_days: Mapped[int] = mapped_column(Integer, default=0)
+    current_streak_days: Mapped[int] = mapped_column(Integer, default=0)
+    last_streak_reset: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=_now)
 
 
@@ -122,3 +125,25 @@ class ChatInsight(Base):
     content: Mapped[str] = mapped_column(Text, default="")
     source_message_id: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=_now)
+
+
+class UserProfile(Base):
+    __tablename__ = "user_profiles"
+
+    user_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    height: Mapped[Optional[float]] = mapped_column(Float, nullable=True)  # cm
+    gender: Mapped[Optional[str]] = mapped_column(String(16), nullable=True)
+    birth_date: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    onboarding_completed: Mapped[bool] = mapped_column(Boolean, default=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=_now)
+
+
+class UserMetricsLog(Base):
+    __tablename__ = "user_metrics_logs"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
+    user_id: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    weight: Mapped[Optional[float]] = mapped_column(Float, nullable=True)  # kg
+    waist_circumference: Mapped[Optional[float]] = mapped_column(Float, nullable=True)  # cm
+    recorded_at: Mapped[datetime] = mapped_column(DateTime, default=_now)
+

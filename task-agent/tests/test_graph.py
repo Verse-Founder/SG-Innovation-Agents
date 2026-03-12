@@ -14,8 +14,9 @@ def _mock_sealion_return_fallback(*args, **kwargs):
 
 class TestGraphE2E:
 
+    @pytest.mark.asyncio
     @patch("utils.llm_factory.requests.post")
-    def test_system_trigger(self, mock_post):
+    async def test_system_trigger(self, mock_post):
         """系统触发 → 应生成任务"""
         mock_resp = MagicMock()
         mock_resp.status_code = 200
@@ -24,13 +25,14 @@ class TestGraphE2E:
         }
         mock_post.return_value = mock_resp
 
-        output = run_task_agent("user_001", trigger_source="system")
+        output = await run_task_agent("user_001", trigger_source="system")
         assert output is not None
         batch = output.get("batch", {})
         assert batch.get("user_id") == "user_001"
 
+    @pytest.mark.asyncio
     @patch("utils.llm_factory.requests.post")
-    def test_chatbot_trigger(self, mock_post):
+    async def test_chatbot_trigger(self, mock_post):
         """chatbot 触发"""
         mock_resp = MagicMock()
         mock_resp.status_code = 200
@@ -39,7 +41,7 @@ class TestGraphE2E:
         }
         mock_post.return_value = mock_resp
 
-        output = run_task_agent(
+        output = await run_task_agent(
             "user_001",
             trigger_source="chatbot",
             trigger_payload={"type": "task_request", "request": "给我推荐今天的任务"},
@@ -47,8 +49,9 @@ class TestGraphE2E:
         assert output is not None
         assert "risk_level" in output
 
+    @pytest.mark.asyncio
     @patch("utils.llm_factory.requests.post")
-    def test_alert_trigger(self, mock_post):
+    async def test_alert_trigger(self, mock_post):
         """预警 Agent 触发"""
         mock_resp = MagicMock()
         mock_resp.status_code = 200
@@ -57,7 +60,7 @@ class TestGraphE2E:
         }
         mock_post.return_value = mock_resp
 
-        output = run_task_agent(
+        output = await run_task_agent(
             "user_001",
             trigger_source="alert_agent",
             trigger_payload={"severity": "high", "alert_level": "high"},
@@ -65,8 +68,9 @@ class TestGraphE2E:
         assert output is not None
         assert output.get("risk_level") in ("high", "critical", "medium", "low")
 
+    @pytest.mark.asyncio
     @patch("utils.llm_factory.requests.post")
-    def test_output_has_notifications(self, mock_post):
+    async def test_output_has_notifications(self, mock_post):
         """输出应包含推送通知"""
         mock_resp = MagicMock()
         mock_resp.status_code = 200
@@ -75,11 +79,12 @@ class TestGraphE2E:
         }
         mock_post.return_value = mock_resp
 
-        output = run_task_agent("user_001", trigger_source="system")
+        output = await run_task_agent("user_001", trigger_source="system")
         assert "notifications" in output
 
+    @pytest.mark.asyncio
     @patch("utils.llm_factory.requests.post")
-    def test_exercise_scenario(self, mock_post):
+    async def test_exercise_scenario(self, mock_post):
         """运动场景：chatbot 转发'我想跑步'"""
         mock_resp = MagicMock()
         mock_resp.status_code = 200
@@ -88,7 +93,7 @@ class TestGraphE2E:
         }
         mock_post.return_value = mock_resp
 
-        output = run_task_agent(
+        output = await run_task_agent(
             "user_001",
             trigger_source="chatbot",
             trigger_payload={"type": "task_request", "request": "我打算去跑步"},
@@ -100,8 +105,9 @@ class TestGraphE2E:
         diet_tasks = [t for t in tasks if t.get("category") == "diet"]
         assert len(diet_tasks) >= 1
 
+    @pytest.mark.asyncio
     @patch("utils.llm_factory.requests.post")
-    def test_renal_scenario(self, mock_post):
+    async def test_renal_scenario(self, mock_post):
         """肾功能场景"""
         mock_resp = MagicMock()
         mock_resp.status_code = 200
@@ -110,7 +116,7 @@ class TestGraphE2E:
         }
         mock_post.return_value = mock_resp
 
-        output = run_task_agent(
+        output = await run_task_agent(
             "user_001",
             trigger_source="system",
             trigger_payload={"request": "肾功能检查"},

@@ -49,7 +49,13 @@ def print_tasks(output: dict):
         print()
 
 
-def main():
+import asyncio
+
+async def run_and_print(user_id: str, trigger_source: str, trigger_payload: dict = None):
+    output = await run_task_agent(user_id, trigger_source=trigger_source, trigger_payload=trigger_payload)
+    print_tasks(output)
+
+async def main():
     """CLI 主循环"""
     print("=" * 60)
     print("🤖 Task Agent — 糖尿病个性化任务管理系统")
@@ -80,64 +86,55 @@ def main():
             break
 
         elif cmd == "daily":
-            output = run_task_agent("user_001", trigger_source="cron")
-            print_tasks(output)
+            await run_and_print("user_001", trigger_source="cron")
 
         elif cmd == "weekly":
-            output = run_task_agent("user_001", trigger_source="system",
-                                    trigger_payload={"type": "weekly_review"})
-            print_tasks(output)
+            await run_and_print("user_001", trigger_source="system",
+                               trigger_payload={"type": "weekly_review"})
 
         elif cmd == "risk":
-            output = run_task_agent("user_001", trigger_source="system")
-            print_tasks(output)
+            await run_and_print("user_001", trigger_source="system")
 
         elif cmd == "exercise":
-            output = run_task_agent("user_001", trigger_source="chatbot",
-                                    trigger_payload={"type": "task_request",
-                                                     "request": "我打算去跑步"})
-            print_tasks(output)
+            await run_and_print("user_001", trigger_source="chatbot",
+                               trigger_payload={"type": "task_request",
+                                                "request": "我打算去跑步"})
 
         elif cmd == "renal":
-            output = run_task_agent("user_001", trigger_source="system",
-                                    trigger_payload={"type": "health_check",
-                                                     "request": "肾功能检查"})
-            print_tasks(output)
+            await run_and_print("user_001", trigger_source="system",
+                               trigger_payload={"type": "health_check",
+                                                "request": "肾功能检查"})
 
         elif cmd == "medication":
-            output = run_task_agent("user_001", trigger_source="system",
-                                    trigger_payload={"type": "medication_check",
-                                                     "request": "用药提醒"})
-            print_tasks(output)
+            await run_and_print("user_001", trigger_source="system",
+                               trigger_payload={"type": "medication_check",
+                                                "request": "用药提醒"})
 
         elif cmd == "chatbot":
-            output = run_task_agent("user_001", trigger_source="chatbot",
-                                    trigger_payload={
-                                        "type": "task_request",
-                                        "request": "我今天想打卡，有什么任务推荐？",
-                                        "user_id": "user_001",
-                                    })
-            print_tasks(output)
+            await run_and_print("user_001", trigger_source="chatbot",
+                               trigger_payload={
+                                   "type": "task_request",
+                                   "request": "我今天想打卡，有什么任务推荐？",
+                                   "user_id": "user_001",
+                               })
 
         elif cmd == "alert":
-            output = run_task_agent("user_001", trigger_source="alert_agent",
-                                    trigger_payload={
-                                        "severity": "high",
-                                        "type": "glucose_alert",
-                                        "alert_level": "high",
-                                        "message": "血糖持续偏高，需要干预",
-                                    })
-            print_tasks(output)
+            await run_and_print("user_001", trigger_source="alert_agent",
+                               trigger_payload={
+                                   "severity": "high",
+                                   "type": "glucose_alert",
+                                   "alert_level": "high",
+                                   "message": "血糖持续偏高，需要干预",
+                               })
 
         elif cmd:
             # 自由输入当作 chatbot 消息
-            output = run_task_agent("user_001", trigger_source="chatbot",
-                                    trigger_payload={
-                                        "type": "task_request",
-                                        "request": cmd,
-                                    })
-            print_tasks(output)
+            await run_and_print("user_001", trigger_source="chatbot",
+                               trigger_payload={
+                                   "type": "task_request",
+                                   "request": cmd,
+                               })
 
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())

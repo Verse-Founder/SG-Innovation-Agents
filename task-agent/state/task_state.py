@@ -23,6 +23,7 @@ class TaskAgentState(TypedDict):
     # ── 智能分析结果 ─────────────────────────────────────
     risk_assessment: Optional[dict]    # RiskAssessment 序列化
     llm_analysis: Optional[str]        # LLM 原始分析文本
+    nearby_parks: Optional[list]       # 附近的公园列表
 
     # ── 任务生成 ─────────────────────────────────────────
     generated_tasks: Optional[list]    # 生成的任务列表

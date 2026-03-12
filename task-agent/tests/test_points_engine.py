@@ -11,7 +11,7 @@ class TestCalculatePoints:
 
     def test_basic_exercise_points(self):
         pts = calculate_task_points("exercise", "daily_routine", streak_days=0)
-        assert pts == 10  # settings.POINTS_DAILY_STEPS
+        assert pts == 10  # settings.POINTS_DAILY_EXERCISE
 
     def test_meal_photo_points(self):
         pts = calculate_task_points("diet", "daily_routine", streak_days=0)

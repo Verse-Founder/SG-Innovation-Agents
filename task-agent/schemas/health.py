@@ -56,11 +56,13 @@ class MedicationStatus(BaseModel):
 
 
 class ExerciseRecord(BaseModel):
-    """运动记录"""
+    """运动记录 (Apple Watch 格式)"""
     exercise_type: str = ""  # walking / jogging / swimming / cycling / tai_chi
+    start_time: Optional[datetime] = None
+    end_time: Optional[datetime] = None
     duration_min: int = 0
-    steps: int = 0
-    heart_rate_avg: Optional[int] = None
+    calories_burned: float = 0.0  # kCal
+    avg_heart_rate: Optional[int] = None
     timestamp: Optional[datetime] = None
 
 
@@ -81,12 +83,19 @@ class HealthSnapshot(BaseModel):
     today_meals: list[MealRecord] = Field(default_factory=list)
     today_medications: list[MedicationStatus] = Field(default_factory=list)
     today_exercise: list[ExerciseRecord] = Field(default_factory=list)
-    today_steps: int = 0
+    today_calories: float = 0.0
 
     # 生命体征
     heart_rate: Optional[int] = None
     blood_pressure_sys: Optional[int] = None
     blood_pressure_dia: Optional[int] = None
+
+    # 代谢与基础信息 (New)
+    height_cm: Optional[float] = None
+    weight_kg: Optional[float] = None
+    age: Optional[int] = None
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
 
     # 行为模式
     usual_exercise_time: Optional[str] = None  # 常规运动时间 HH:MM
@@ -107,11 +116,12 @@ class BehaviorPattern(BaseModel):
     """行为模式（周维度统计）"""
     user_id: str
     week_start: Optional[datetime] = None
-    avg_daily_steps: int = 0
+    avg_daily_calories: float = 0.0
     exercise_days_per_week: int = 0
     exercise_preferred_time: str = "afternoon"
     meal_regularity_score: float = 0.0  # 0-1，用餐规律性
     medication_adherence_pct: float = 100.0
     task_completion_rate: float = 0.0  # 上周任务完成率
     glucose_control_score: float = 0.0  # 0-1
-    consecutive_completion_days: int = 0  # 连续完成天数
+    current_streak_days: int = 0
+    last_streak_reset: Optional[datetime] = None

@@ -24,7 +24,7 @@ def _mock_llm_post():
 
 class TestHealthEndpoint:
     def test_health_check(self):
-        with TestClient(app) as client:
+        with TestClient(app, raise_server_exceptions=True) as client:
             resp = client.get("/health")
             assert resp.status_code == 200
             assert resp.json()["status"] == "ok"
@@ -34,7 +34,7 @@ class TestTriggerEndpoints:
     @patch("utils.llm_factory.requests.post")
     def test_chatbot(self, mock_post):
         mock_post.return_value = _mock_llm_post()
-        with TestClient(app) as client:
+        with TestClient(app, raise_server_exceptions=True) as client:
             resp = client.post("/api/v1/trigger/chatbot", json={
                 "user_id": "test", "payload": {"type": "task_request", "request": "推荐任务"},
             })
@@ -44,7 +44,7 @@ class TestTriggerEndpoints:
     @patch("utils.llm_factory.requests.post")
     def test_alert(self, mock_post):
         mock_post.return_value = _mock_llm_post()
-        with TestClient(app) as client:
+        with TestClient(app, raise_server_exceptions=True) as client:
             resp = client.post("/api/v1/trigger/alert", json={
                 "user_id": "test", "payload": {"severity": "high"},
             })
@@ -53,14 +53,16 @@ class TestTriggerEndpoints:
     @patch("utils.llm_factory.requests.post")
     def test_doctor(self, mock_post):
         mock_post.return_value = _mock_llm_post()
-        with TestClient(app) as client:
+        with TestClient(app, raise_server_exceptions=True) as client:
             resp = client.post("/api/v1/trigger/doctor", json={"user_id": "test"})
+            if resp.status_code == 500:
+                print("500 ERROR DETAIL:", resp.json())
             assert resp.status_code == 200
 
 
 class TestPointsEndpoint:
     def test_empty_balance(self):
-        with TestClient(app) as client:
+        with TestClient(app, raise_server_exceptions=True) as client:
             resp = client.get("/api/v1/points/nobody")
             assert resp.status_code == 200
             assert resp.json()["data"]["current_balance"] == 0

@@ -16,6 +16,9 @@ from nodes.priority_ranking import priority_ranking_node
 from nodes.output_formatter import output_formatter_node
 
 
+from nodes.location_enrichment import location_enrichment_node
+
+
 def build_task_agent_graph() -> StateGraph:
     """构建 Task Agent 的 LangGraph"""
     graph = StateGraph(TaskAgentState)
@@ -24,6 +27,7 @@ def build_task_agent_graph() -> StateGraph:
     graph.add_node("intake", intake_node)
     graph.add_node("context_enrichment", context_enrichment_node)
     graph.add_node("risk_assessment", risk_assessment_node)
+    graph.add_node("location_enrichment", location_enrichment_node)
     graph.add_node("task_generation", task_generation_node)
     graph.add_node("priority_ranking", priority_ranking_node)
     graph.add_node("output_formatter", output_formatter_node)
@@ -31,7 +35,8 @@ def build_task_agent_graph() -> StateGraph:
     # 定义边
     graph.set_entry_point("intake")
     graph.add_edge("intake", "context_enrichment")
-    graph.add_edge("context_enrichment", "risk_assessment")
+    graph.add_edge("context_enrichment", "location_enrichment")
+    graph.add_edge("location_enrichment", "risk_assessment")
     graph.add_edge("risk_assessment", "task_generation")
     graph.add_edge("task_generation", "priority_ranking")
     graph.add_edge("priority_ranking", "output_formatter")
@@ -40,13 +45,13 @@ def build_task_agent_graph() -> StateGraph:
     return graph
 
 
-def get_compiled_graph():
+async def get_compiled_graph():
     """获取编译后的可执行图"""
     graph = build_task_agent_graph()
     return graph.compile()
 
 
-def run_task_agent(
+async def run_task_agent(
     user_id: str,
     trigger_source: str = "system",
     trigger_payload: dict | None = None,
@@ -65,7 +70,7 @@ def run_task_agent(
     Returns:
         输出 payload（包含 tasks batch, notifications, risk level 等）
     """
-    app = get_compiled_graph()
+    app = await get_compiled_graph()
 
     initial_state: TaskAgentState = {
         "trigger_source": trigger_source,
@@ -88,7 +93,7 @@ def run_task_agent(
     print(f"🚀 Task Agent 启动 | 用户: {user_id} | 触发: {trigger_source}")
     print(f"{'='*60}")
 
-    result = app.invoke(initial_state)
+    result = await app.ainvoke(initial_state)
 
     output = result.get("output_payload", {})
     if output:

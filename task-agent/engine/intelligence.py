@@ -14,8 +14,34 @@ from utils.llm_factory import call_sealion
 from config import settings
 
 
-MEDICAL_ADVISOR_SYSTEM_PROMPT = """你是一位资深的新加坡糖尿病专科护理顾问（Diabetes Nurse Specialist），
-服务于本地慢性病患者。你的职责是根据患者数据进行全面的健康风险评估并提出个性化的任务建议。
+def calculate_metabolic_metrics(snapshot: HealthSnapshot) -> dict:
+    """计算 BMI 和心率区间"""
+    bmi = None
+    if snapshot.height_cm and snapshot.weight_kg:
+        bmi = snapshot.weight_kg / ((snapshot.height_cm / 100) ** 2)
+    
+    hr_zones = None
+    if snapshot.age:
+        max_hr = 220 - snapshot.age
+        hr_zones = {
+            "max_hr": max_hr,
+            "zone1": (int(max_hr * 0.5), int(max_hr * 0.6)),
+            "zone2": (int(max_hr * 0.6), int(max_hr * 0.7)),
+            "zone3": (int(max_hr * 0.7), int(max_hr * 0.8)),
+        }
+    
+    return {"bmi": bmi, "hr_zones": hr_zones}
+
+
+MEDICAL_ADVISOR_SYSTEM_PROMPT = """你是一位资深的新加坡糖尿病专科护理顾问（Diabetes Nurse Specialist）。
+你的职责是根据患者数据进行全面的健康风险评估并提出个性化的任务建议。
+
+核心运动指南参考：
+1. 循序渐进：从低强度开始，避免突然剧烈运动。以“微喘但能说话”为度。
+2. 规律坚持：每周至少150分钟中等强度有氧运动（平均每天30分钟，5天）。
+3. 组合模式：有氧运动（控糖主力）+ 抗阻运动（增加肌肉提高代谢）+ 柔韧性/平衡训练（防跌倒）。
+4. 风险规避：餐后1-2小时运动最佳。避开打完胰岛素/服药后马上开展高强度运动。
+5. 安全红线：血糖 < 4.4 不运动需补充 15g 碳水；血糖 > 16.7 禁运动；收缩压 > 160 禁运动。
 
 你必须回复严格的 JSON 格式，不要有任何额外文字。JSON 结构如下：
 {
@@ -41,14 +67,9 @@ MEDICAL_ADVISOR_SYSTEM_PROMPT = """你是一位资深的新加坡糖尿病专科
 
 核心原则：
 1. 温暖关怀：caring_message 必须像朋友说话，用鼓励式话术。
-   - 好的例子："如果你现在动一动10分钟，预测明天早上空腹血糖能降0.5mmol/L，就可以多喝一碗豆浆☀️"
-   - 坏的例子："请立即运动以降低血糖"
 2. 降低门槛：把大任务拆成小步骤，强调即时好处。
-3. 新加坡本地化：饮食建议用本地食物（鸡饭、叻沙、椰浆饭等），提供低GI替代方案。
-4. 肾功能关注：eGFR下降趋势、泡沫尿、蛋白尿是重要警报。
-5. 用药安全：用药调整必须标记 requires_doctor_review=true，不得直接建议改药量。
-6. 运动处方安全：血糖<4.4不运动需先补餐，血糖>16.7禁运动，血压>160/100禁运动。
-7. 结合聊天记录：用户在聊天中透露的症状、情绪、饮食情况是重要参考。
+3. 新加坡本地化：建议低GI替代方案（如糙米、少糖 kopi-o）。
+4. 运动建议：建议应包含具体的卡路里消耗目标或分钟数。
 """
 
 
@@ -56,26 +77,26 @@ def build_patient_data_prompt(
     snapshot: HealthSnapshot,
     behavior: BehaviorPattern,
     chat_insights: list[str] | None = None,
+    nearby_parks: list[dict] | None = None,
 ) -> str:
-    """构建患者数据 prompt"""
+    """构建患者数据 prompt，包含代谢和位置信息"""
     # 血糖数据
     glucose_readings = ""
     for r in snapshot.glucose.recent_readings[-6:]:
         glucose_readings += f"  - {r.timestamp.strftime('%H:%M')} [{r.context}]: {r.value} mmol/L\n"
 
-    # 用餐数据
-    meals_text = ""
-    for m in snapshot.today_meals:
-        meals_text += f"  - {m.meal_type}: {m.description}"
-        if m.estimated_calories:
-            meals_text += f" (~{m.estimated_calories}kcal, GI:{m.gi_level})"
-        meals_text += "\n"
-
-    # 用药数据
-    meds_text = ""
-    for med in snapshot.today_medications:
-        status = "✅已服用" if med.taken else "❌未服用"
-        meds_text += f"  - {med.medication_name} {med.scheduled_time}: {status}\n"
+    # 代谢计算
+    meta = calculate_metabolic_metrics(snapshot)
+    bmi_text = f"{meta['bmi']:.1f}" if meta["bmi"] else "N/A"
+    
+    hr_zones = "N/A"
+    if meta["hr_zones"]:
+        z = meta["hr_zones"]
+        hr_zones = (
+            f"1区(热身): {z['zone1'][0]}-{z['zone1'][1]}, "
+            f"2区(燃脂): {z['zone2'][0]}-{z['zone2'][1]}, "
+            f"3区(有氧): {z['zone3'][0]}-{z['zone3'][1]}"
+        )
 
     # 聊天摘要
     chat_text = ""
@@ -83,59 +104,63 @@ def build_patient_data_prompt(
         for insight in chat_insights[-5:]:
             chat_text += f"  - {insight}\n"
 
+    # 公园推荐
+    parks_text = "未提供或周围无公园"
+    if nearby_parks:
+        parks_text = "\n".join([f"  - {p['name']} (GPS: {p['latitude']},{p['longitude']})" for p in nearby_parks])
+
     # 症状
     symptoms_text = "无" if not snapshot.reported_symptoms else "、".join(snapshot.reported_symptoms)
 
+    # 详细运动量
+    exercise_details = ""
+    for ex in snapshot.today_exercise:
+        start_str = ex.start_time.strftime("%H:%M") if ex.start_time else "N/A"
+        exercise_details += f"  - {ex.exercise_type}: {ex.calories_burned} kcal ({ex.duration_min} min, {start_str}, HR: {ex.avg_heart_rate})\n"
+
+    # 肾功能
+    renal_text = f"eGFR: {snapshot.renal.egfr or 'N/A'}, 蛋白尿: {snapshot.renal.proteinuria or 'N/A'}, 趋势: {snapshot.renal.egfr_trend}"
+
     return f"""
+【患者基础信息】
+- 用户 ID: {snapshot.user_id}
+- BMI: {bmi_text} (身高: {snapshot.height_cm}cm, 体重: {snapshot.weight_kg}kg)
+- 患者年龄: {snapshot.age or "N/A"}
+- 目标心率区间: {hr_zones}
+
+【附近可运动地点】
+{parks_text}
+
 【患者健康快照】
-- 用户ID: {snapshot.user_id}
-- 当前情绪: {snapshot.emotional_state}
 - 自报症状: {symptoms_text}
+- 情绪状态: {snapshot.emotional_state}
 
 【血糖数据】
+{glucose_readings or "  无近期数据"}
 - 趋势: {snapshot.glucose.trend}
-- 黎明现象: {"是" if snapshot.glucose.has_dawn_phenomenon else "否"}
-- 空腹均值: {snapshot.glucose.avg_fasting or "N/A"} mmol/L
-- 餐后均值: {snapshot.glucose.avg_post_meal or "N/A"} mmol/L
 - TIR: {snapshot.glucose.time_in_range_pct or "N/A"}%
-- 最近读数:
-{glucose_readings}
-【HbA1c】
-- 最新值: {snapshot.latest_hba1c or "N/A"}% (目标 <{settings.HBA1C_TARGET}%)
-- 测量日期: {snapshot.last_hba1c_date.strftime('%Y-%m-%d') if snapshot.last_hba1c_date else "N/A"}
 
 【肾功能】
-- eGFR: {snapshot.renal.egfr or "N/A"} mL/min/1.73m² (前次: {snapshot.renal.egfr_previous or "N/A"})
-- 趋势: {snapshot.renal.egfr_trend}
-- 蛋白尿: {snapshot.renal.proteinuria or "未测"} mg/day
+- {renal_text}
 - 泡沫尿: {"有" if snapshot.renal.has_foam_urine else "无"}
 
-【今日用餐】
-{meals_text or "  无记录"}
-【今日用药】
-{meds_text or "  无记录"}
-【今日运动】
-- 步数: {snapshot.today_steps}
-- 常规运动时间: {snapshot.usual_exercise_time or "未设置"}
-- 活动记录: {len(snapshot.today_exercise)} 次
+【HbA1c】
+- 最新值: {snapshot.latest_hba1c or "N/A"}%
 
-【生命体征】
-- 心率: {snapshot.heart_rate or "N/A"} bpm
-- 血压: {snapshot.blood_pressure_sys or "N/A"}/{snapshot.blood_pressure_dia or "N/A"} mmHg
+【今日状态】
+- 今日消耗: {snapshot.today_calories} kcal
+- 运动记录: {len(snapshot.today_exercise)} 次
+{exercise_details or "  无"}
+- 最新心率: {snapshot.heart_rate or "N/A"} bpm
+- 血压: {snapshot.blood_pressure_sys}/{snapshot.blood_pressure_dia} mmHg
 
-【行为模式（上周）】
-- 周均步数: {behavior.avg_daily_steps}
-- 运动天数: {behavior.exercise_days_per_week}/7
-- 服药率: {behavior.medication_adherence_pct}%
-- 任务完成率: {behavior.task_completion_rate * 100:.0f}%
-- 连续完成天数: {behavior.consecutive_completion_days}
-- 血糖控制评分: {behavior.glucose_control_score * 100:.0f}/100
+【行为模式（上周连击）】
+- 连击天数: {behavior.current_streak_days} 天
+- 周均每日消耗: {behavior.avg_daily_calories} kcal
+- 建议运动时间: {behavior.exercise_preferred_time}
 
 【聊天记录摘要】
 {chat_text or "  无"}
-【复诊记录】
-- 上次复诊: {snapshot.last_checkup_date.strftime('%Y-%m-%d') if snapshot.last_checkup_date else "N/A"}
-- 下次预约: {snapshot.next_scheduled_checkup.strftime('%Y-%m-%d') if snapshot.next_scheduled_checkup else "未预约"}
 """
 
 
@@ -143,12 +168,12 @@ def analyze_and_generate_tasks(
     snapshot: HealthSnapshot,
     behavior: BehaviorPattern,
     chat_insights: list[str] | None = None,
+    nearby_parks: list[dict] | None = None,
 ) -> tuple[RiskAssessment, list[dict]]:
     """
     核心方法：AI 医学顾问分析患者数据，输出风险评估 + 个性化任务
-    返回 (RiskAssessment, recommended_tasks list)
     """
-    patient_data = build_patient_data_prompt(snapshot, behavior, chat_insights)
+    patient_data = build_patient_data_prompt(snapshot, behavior, chat_insights, nearby_parks)
 
     raw_response = call_sealion(
         system_prompt=MEDICAL_ADVISOR_SYSTEM_PROMPT,
@@ -287,6 +312,19 @@ def _rule_based_fallback(
                 "points": 10,
             })
 
+    # ── 运动量监测 ──
+    if snapshot.today_calories < settings.DEFAULT_DAILY_CALORIES_GOAL:
+        gap = settings.DEFAULT_DAILY_CALORIES_GOAL - snapshot.today_calories
+        tasks.append({
+            "category": "exercise",
+            "title": "今日运动达标挑战",
+            "description": f"您今天已消耗 {snapshot.today_calories} kcal，距离目标还差 {gap} kcal。",
+            "caring_message": f"今天已经动了动，很棒哦！再稍微加一把劲消耗 {gap} kcal，"
+                              "大概就是散步 15 分钟的事儿，要不要下楼吹吹风？🌳",
+            "priority": "medium",
+            "points": 10,
+        })
+
     risk_assessment = RiskAssessment(
         risk_level=risk_level,
         risks=risks,
@@ -296,5 +334,5 @@ def _rule_based_fallback(
         checkup_recommendation=checkup_rec,
     )
 
-    print(f"[Intelligence/Fallback] 风险等级: {risk_level} | 任务: {len(tasks)} 个")
+    print(f"[Intelligence/Fallback] 风险等级: {risk_level} | 任务: {len(tasks)} 个 | 消耗: {snapshot.today_calories} kcal")
     return risk_assessment, tasks

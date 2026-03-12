@@ -64,7 +64,7 @@ class TestPatientDataPrompt:
         prompt = build_patient_data_prompt(normal_snapshot, behavior_pattern)
         assert "user_001" in prompt
         assert "血糖数据" in prompt
-        assert "肾功能" in prompt
+        assert "今日消耗" in prompt
         assert "eGFR" in prompt
         assert "行为模式" in prompt
 

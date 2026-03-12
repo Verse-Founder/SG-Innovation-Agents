@@ -10,7 +10,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from scheduler.daily_routine import (
     generate_daily_tasks,
     generate_meal_photo_task,
-    generate_daily_quiz,
+    generate_ai_quiz,
     generate_hba1c_reminder,
     QUIZ_BANK,
 )
@@ -55,13 +55,13 @@ class TestMealPhoto:
 
 class TestQuiz:
     def test_metadata(self):
-        t = generate_daily_quiz("u1")
+        t = generate_ai_quiz("u1")
         assert t["category"] == "quiz"
         m = t["metadata"]
         assert all(k in m for k in ("quiz_options", "quiz_answer", "quiz_explanation"))
 
     def test_answer_in_options(self):
-        m = generate_daily_quiz("u1")["metadata"]
+        m = generate_ai_quiz("u1")["metadata"]
         assert m["quiz_answer"] in m["quiz_options"]
 
 

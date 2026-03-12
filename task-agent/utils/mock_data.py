@@ -28,7 +28,7 @@ def get_mock_user_profile(user_id: str = "user_001") -> dict:
                 "reminder_time": "08:00",
                 "diet": "低碳水",
                 "exercise_time": "17:00",
-                "steps_goal": 6000,
+                "calories_goal": 300,
             },
             "emergency_contacts": [{"name": "陈太太", "phone": "+65 9123 4567"}],
             "doctor": {"name": "Dr. Lim", "clinic": "SGH Diabetes Centre"},
@@ -46,7 +46,7 @@ def get_mock_user_profile(user_id: str = "user_001") -> dict:
                 "reminder_time": "09:00",
                 "diet": "halal",
                 "exercise_time": "07:00",
-                "steps_goal": 8000,
+                "calories_goal": 400,
             },
             "emergency_contacts": [],
             "doctor": {"name": "Dr. Wong", "clinic": "NUH Endocrine"},
@@ -95,8 +95,18 @@ def get_mock_health_snapshot(
                              scheduled_time="08:00", taken=True,
                              taken_at=now.replace(hour=8, minute=5)),
         ],
-        today_exercise=[],
-        today_steps=2300,
+        today_exercise=[
+            ExerciseRecord(
+                exercise_type="walking",
+                start_time=now - timedelta(minutes=45),
+                end_time=now - timedelta(minutes=15),
+                duration_min=30,
+                calories_burned=120.0,
+                avg_heart_rate=110,
+                timestamp=now - timedelta(minutes=15)
+            )
+        ],
+        today_calories=120.0,
         heart_rate=72,
         blood_pressure_sys=135,
         blood_pressure_dia=85,
@@ -164,7 +174,7 @@ def get_mock_behavior_pattern(user_id: str = "user_001") -> BehaviorPattern:
     return BehaviorPattern(
         user_id=user_id,
         week_start=now_sgt() - timedelta(days=now_sgt().weekday()),
-        avg_daily_steps=4500,
+        avg_daily_calories=250.0,
         exercise_days_per_week=3,
         exercise_preferred_time="17:00",
         meal_regularity_score=0.7,

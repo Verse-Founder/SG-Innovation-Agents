@@ -73,12 +73,12 @@ class TestTaskCRUD:
 
     async def test_complete_task(self, session):
         task = await crud.create_task(
-            session, user_id="u4", title="完成测试", category="exercise", points=15,
+            session, user_id="u4", title="完成测试", category="exercise", points=10,
         )
         await session.flush()
         completion = await crud.complete_task(session, task.id, "u4")
         assert completion is not None
-        assert completion.points_earned == 15
+        assert completion.points_earned == 10
 
     async def test_complete_wrong_user(self, session):
         task = await crud.create_task(session, user_id="uA", title="A的", category="diet")
@@ -124,7 +124,7 @@ class TestHealthCRUD:
 
     async def test_recent_logs(self, session):
         await crud.create_health_log(session, user_id="h2", blood_glucose=5.5)
-        await crud.create_health_log(session, user_id="h2", steps=4500)
+        await crud.create_health_log(session, user_id="h2", calories=150.0)
         await session.flush()
         logs = await crud.get_recent_health_logs(session, "h2")
         assert len(logs) == 2
@@ -140,7 +140,7 @@ class TestMiscCRUD:
 
     async def test_behavior_pattern(self, session):
         bp = await crud.create_behavior_pattern(
-            session, user_id="b1", avg_daily_steps=5000,
+            session, user_id="b1", avg_daily_calories=300.0,
             medication_adherence_pct=90.0, task_completion_rate=0.8,
         )
-        assert bp.avg_daily_steps == 5000
+        assert bp.avg_daily_calories == 300.0

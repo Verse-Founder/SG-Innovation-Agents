@@ -27,12 +27,12 @@ DB_URL = os.getenv("DB_URL", "sqlite+aiosqlite:///./task_agent.db")
 REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
 
 # ── 任务配置 ─────────────────────────────────────────────
-DEFAULT_DAILY_STEPS_GOAL = 6000
+DEFAULT_DAILY_CALORIES_GOAL = 300  # kcal
 MEAL_PHOTO_TIMES = {"breakfast": "08:00", "lunch": "12:00", "dinner": "18:00"}
 MEDICATION_REMINDER_ADVANCE_MIN = 15  # 提前N分钟提醒
 
 # ── 积分配置 ─────────────────────────────────────────────
-POINTS_DAILY_STEPS = 10
+POINTS_DAILY_EXERCISE = 10
 POINTS_MEAL_PHOTO = 5
 POINTS_DAILY_QUIZ = 5
 POINTS_MEDICATION_ON_TIME = 10
