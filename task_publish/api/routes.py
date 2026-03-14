@@ -9,6 +9,8 @@ from task_publish.db.models import DynamicTaskLog, RewardLog, QuizBank, RoutineT
 from task_publish.task_agent import agent_orchestrator
 from task_publish.task_agent.graph import copy_subgraph
 
+from task_publish.api.routine_tasks import submit_meal_photo, fetch_daily_quiZ
+
 router = APIRouter()
 
 # Schema inputs
@@ -141,12 +143,24 @@ def get_daily_tasks():
     return {"status": "stubbed"}
 
 @router.post("/tasks/meal-photo")
-def upload_meal_photo():
-    return {"status": "stubbed"}
+async def upload_meal_photo(file: UploadFile = File(...), user_id: str = Header(...), db: Session = Depends(get_db)):
+    # Read file temporarily
+    contents = await file.read()
+    # Save to temp
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".jpg") as tmp:
+        tmp.write(contents)
+        tmp_path = tmp.name
+        
+    try:
+        res = submit_meal_photo(db, user_id, tmp_path)
+    finally:
+        os.remove(tmp_path)
+        
+    return res
 
 @router.get("/tasks/quiz/today")
-def get_quiz_today():
-    return {"status": "stubbed"}
+def get_quiz_today(user_id: str = "mock_user", db: Session = Depends(get_db)):
+    return fetch_daily_quiZ(db, user_id)
 
 @router.post("/tasks/quiz/submit")
 def submit_quiz(req: QuizSubmitReq):

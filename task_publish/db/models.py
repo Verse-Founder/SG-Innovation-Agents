@@ -5,7 +5,6 @@ from sqlalchemy import (
     String, Text, Integer, Float, Boolean, DateTime,
     ForeignKey, Index, Numeric, JSON, SmallInteger
 )
-from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 class Base(DeclarativeBase):
@@ -60,7 +59,7 @@ class DynamicTaskLog(Base):
 
     task_id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     user_id: Mapped[str] = mapped_column(String(36), ForeignKey("users.user_id"), nullable=False)
-    task_content: Mapped[Dict[str, Any]] = mapped_column(JSONB, default=dict, nullable=False)
+    task_content: Mapped[Dict[str, Any]] = mapped_column(JSON, default=dict, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now, nullable=False)
     task_status: Mapped[str] = mapped_column(String(20), default="pending", nullable=False)
     target_lat: Mapped[Optional[float]] = mapped_column(Numeric(10, 7), nullable=True)
@@ -97,7 +96,7 @@ class RewardLog(Base):
     total_points: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     accumulated_points: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     consumed_points: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
-    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now, onupdate=_now, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now, nullable=False)
 
 class UserFoodLog(Base):
     __tablename__ = "user_food_log"
@@ -130,3 +129,11 @@ class UserCgmLog(Base):
     user_id: Mapped[str] = mapped_column(String(36), nullable=False)
     glucose: Mapped[float] = mapped_column(Float, nullable=False)
     recorded_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+class UserKnownPlaces(Base):
+    __tablename__ = "user_known_places"
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    user_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    place_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    gps_lat: Mapped[float] = mapped_column(Numeric(10, 7), nullable=False)
+    gps_lng: Mapped[float] = mapped_column(Numeric(10, 7), nullable=False)
