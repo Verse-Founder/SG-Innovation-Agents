@@ -4,7 +4,7 @@ LangGraph 图定义：Task Agent 处理流水线
 
 流程：
 START → intake → context_enrichment → risk_assessment
-      → task_generation → priority_ranking → output_formatter → END
+      → location_enrichment task_generation → priority_ranking → output_formatter → END
 """
 from langgraph.graph import StateGraph, END
 from state.task_state import TaskAgentState
@@ -14,8 +14,6 @@ from nodes.risk_assessment import risk_assessment_node
 from nodes.task_generation import task_generation_node
 from nodes.priority_ranking import priority_ranking_node
 from nodes.output_formatter import output_formatter_node
-
-
 from nodes.location_enrichment import location_enrichment_node
 
 

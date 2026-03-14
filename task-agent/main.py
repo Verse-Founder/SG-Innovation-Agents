@@ -2,8 +2,7 @@
 main.py
 Task Agent CLI 入口 — 用于本地开发测试和 Demo
 """
-import sys
-import json
+
 from graph.builder import run_task_agent
 
 
@@ -51,10 +50,12 @@ def print_tasks(output: dict):
 
 import asyncio
 
+# 异步函数
 async def run_and_print(user_id: str, trigger_source: str, trigger_payload: dict = None):
-    output = await run_task_agent(user_id, trigger_source=trigger_source, trigger_payload=trigger_payload)
+    output = await run_task_agent(user_id, trigger_source=trigger_source, trigger_payload=trigger_payload)  # 等待异步结果
     print_tasks(output)
 
+# 异步函数
 async def main():
     """CLI 主循环"""
     print("=" * 60)
@@ -65,12 +66,12 @@ async def main():
     print("可用命令：")
     print("  daily       - 查看日常任务")
     print("  weekly      - 查看本周个性化任务")
-    print("  risk        - 运行风险评估")
+    # print("  risk        - 运行风险评估")
     print("  exercise    - 模拟运动前风险检查")
-    print("  renal       - 模拟肾功能报告")
-    print("  medication  - 模拟漏服药物场景")
+    # print("  renal       - 模拟肾功能报告")
+    # print("  medication  - 模拟漏服药物场景")
     print("  chatbot     - 模拟 chatbot 转发请求")
-    print("  alert       - 模拟预警 Agent 信号")
+    # print("  alert       - 模拟预警 Agent 信号")
     print("  quit / q    - 退出")
     print()
 
@@ -86,12 +87,13 @@ async def main():
             break
 
         elif cmd == "daily":
-            await run_and_print("user_001", trigger_source="cron")
+            await run_and_print("user_001", trigger_source="cron") # 调用异步函数
 
         elif cmd == "weekly":
             await run_and_print("user_001", trigger_source="system",
                                trigger_payload={"type": "weekly_review"})
 
+        # 暂时不实现
         elif cmd == "risk":
             await run_and_print("user_001", trigger_source="system")
 
@@ -99,16 +101,19 @@ async def main():
             await run_and_print("user_001", trigger_source="chatbot",
                                trigger_payload={"type": "task_request",
                                                 "request": "我打算去跑步"})
-
+        
+        # 暂时不实现
         elif cmd == "renal":
             await run_and_print("user_001", trigger_source="system",
                                trigger_payload={"type": "health_check",
                                                 "request": "肾功能检查"})
 
+        # 暂时不实现
         elif cmd == "medication":
             await run_and_print("user_001", trigger_source="system",
                                trigger_payload={"type": "medication_check",
                                                 "request": "用药提醒"})
+        
 
         elif cmd == "chatbot":
             await run_and_print("user_001", trigger_source="chatbot",
@@ -117,7 +122,8 @@ async def main():
                                    "request": "我今天想打卡，有什么任务推荐？",
                                    "user_id": "user_001",
                                })
-
+        
+        # 暂时不实现
         elif cmd == "alert":
             await run_and_print("user_001", trigger_source="alert_agent",
                                trigger_payload={
@@ -137,4 +143,4 @@ async def main():
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    asyncio.run(main())  # 启动异步事件循环
