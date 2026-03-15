@@ -1,0 +1,23 @@
+# Environments
+.env
+
+# Python compilation files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# IDE files
+.vscode/
+.idea/
+
+# Testing output
+.pytest_cache/
+coverage.xml
+htmlcov/
+*.sqlite3
+task_publish.db
