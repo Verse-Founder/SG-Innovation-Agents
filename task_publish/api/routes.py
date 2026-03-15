@@ -1,11 +1,14 @@
-from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
+import os
+import tempfile
+from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks, File, UploadFile, Header
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 from pydantic import BaseModel
 from typing import Optional, List, Dict, Any
+from datetime import datetime, timedelta
 
 from task_publish.db.session import get_db
-from task_publish.db.models import DynamicTaskLog, RewardLog, QuizBank, RoutineTaskLog
+from task_publish.db.models import DynamicTaskLog, RewardLog, QuizBank, RoutineTaskLog, User, UserExerciseLog, UserCgmLog, DynamicTaskRule, UserHrLog
 from task_publish.task_agent import agent_orchestrator
 from task_publish.task_agent.graph import copy_subgraph
 
@@ -32,6 +35,11 @@ class WeeklyWaistReq(BaseModel):
 
 class WeeklyWeightReq(BaseModel):
     value_kg: float
+
+class MockSyncReq(BaseModel):
+    user_id: str
+    calories_burned: float
+    cgm_value: float
 
 # --- 8.2 Dynamic exercise tasks ---
 
@@ -117,6 +125,46 @@ def internal_trigger(req: TriggerReq, background_tasks: BackgroundTasks, db: Ses
     # Admin only. Triggers orchestrator
     agent_orchestrator.run(db, req.user_id, "admin")
     return {"status": "triggered"}
+
+@router.post("/internal/mock/sync-data")
+def mock_sync_data(req: MockSyncReq, db: Session = Depends(get_db)):
+    # Add User and Rule if absent for testing
+    user = db.query(User).filter(User.user_id == req.user_id).first()
+    if not user:
+        db.add(User(
+            user_id=req.user_id, 
+            name="Demo User",
+            weight_kg=80.0,
+            height_cm=175.0,
+            gender="male"
+        ))
+        db.add(DynamicTaskRule(user_id=req.user_id, base_calorie=300, trigger_threshold=0.6))
+        db.commit()
+
+    # Drop latest exercise
+    db.add(UserExerciseLog(
+        user_id=req.user_id,
+        exercise_type="walking",
+        calories_burned=req.calories_burned,
+        started_at=datetime.utcnow() - timedelta(minutes=10),
+        ended_at=datetime.utcnow()
+    ))
+    # Drop latest CGM
+    db.add(UserCgmLog(
+        user_id=req.user_id,
+        glucose=req.cgm_value,
+        recorded_at=datetime.utcnow()
+    ))
+    # Drop latest HR for GPS location parsing
+    db.add(UserHrLog(
+        user_id=req.user_id,
+        heart_rate=80,
+        gps_lat=1.3521,
+        gps_lng=103.8198,
+        recorded_at=datetime.utcnow()
+    ))
+    db.commit()
+    return {"status": "synced"}
 
 # --- 8.3 Points and flower ---
 

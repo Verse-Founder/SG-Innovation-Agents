@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Task Agent - Demo Console</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .json-viewer {
+            background-color: #1e1e1e;
+            color: #d4d4d4;
+            padding: 1rem;
+            border-radius: 0.5rem;
+            font-family: monospace;
+            white-space: pre-wrap;
+            min-height: 100px;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 text-gray-800 p-8">
+
+<div class="max-w-6xl mx-auto space-y-6">
+    <div class="bg-white p-6 rounded-lg shadow">
+        <h1 class="text-2xl font-bold text-indigo-600 mb-2">SG Innovation - Task Agent / LangGraph Console</h1>
+        <p class="text-sm text-gray-500 mb-4">Simulate Apple Watch / CGM device synchronization and trigger the dynamic task agent pipeline.</p>
+        
+        <div class="flex items-center space-x-4">
+            <label class="font-bold">Active User ID:</label>
+            <input type="text" id="userId" value="demo_user_001" class="border border-gray-300 rounded px-3 py-2 w-64" />
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        
+        <!-- Panel 1: Mock Stream & Trigger -->
+        <div class="bg-white p-6 rounded-lg shadow space-y-4">
+            <h2 class="text-xl font-bold border-b pb-2">1. Upstream Trigger Simulation</h2>
+            
+            <div class="bg-blue-50 p-4 rounded border border-blue-100">
+                <h3 class="font-semibold mb-2">Simulate Data Sync (Past 10 mins)</h3>
+                <div class="flex space-x-4 mb-3">
+                    <div>
+                        <label class="block text-xs text-gray-500">Calories Burned (e.g. 50)</label>
+                        <input type="number" id="syncCal" value="50" class="border rounded px-2 py-1 w-24">
+                    </div>
+                    <div>
+                        <label class="block text-xs text-gray-500">Current CGM (mmol/L)</label>
+                        <input type="number" id="syncCgm" value="5.5" step="0.1" class="border rounded px-2 py-1 w-24">
+                    </div>
+                </div>
+                <button onclick="syncData()" class="bg-blue-600 text-white px-4 py-2 rounded text-sm hover:bg-blue-700 transition">Push Mock Data</button>
+            </div>
+
+            <div class="bg-red-50 p-4 rounded border border-red-100">
+                <h3 class="font-semibold mb-2">Trigger Main Evaluation (15:00 UTC)</h3>
+                <p class="text-xs text-gray-600 mb-3">Forces the Agent Orchestrator to check if context meets trigger thresholds.</p>
+                <button onclick="triggerEngine()" class="bg-red-600 text-white px-4 py-2 rounded text-sm hover:bg-red-700 transition">Execute RuleEngine & MapTool</button>
+            </div>
+            
+            <pre id="logPanel1" class="text-xs text-gray-400 bg-gray-50 p-2 rounded h-24 overflow-auto">Awaiting actions...</pre>
+        </div>
+
+        <!-- Panel 2: Task States -->
+        <div class="bg-white p-6 rounded-lg shadow space-y-4">
+            <h2 class="text-xl font-bold border-b pb-2">2. App Client / Task Status</h2>
+            
+            <div class="flex space-x-2">
+                <button onclick="fetchActiveTask()" class="bg-green-600 text-white px-4 py-2 rounded text-sm hover:bg-green-700">Get Active Task</button>
+                <button onclick="fetchPoints()" class="bg-purple-600 text-white px-4 py-2 rounded text-sm hover:bg-purple-700">Refresh Assets (Flowers)</button>
+            </div>
+            
+            <div id="selectionArea" class="hidden mt-4 bg-yellow-50 p-3 rounded border border-yellow-200">
+                <p class="text-sm font-bold text-yellow-800 mb-2">Task Awaiting Selection! Pick a park to wake up LangGraph:</p>
+                <div id="parkButtons" class="flex space-x-2"></div>
+            </div>
+            
+            <div id="arrivalArea" class="hidden mt-4 bg-indigo-50 p-3 rounded border border-indigo-200">
+                <p class="text-sm font-bold text-indigo-800 mb-2">Task Pending Arrival!</p>
+                <p class="text-xs text-gray-600 mb-1">Target GPS is locked. Provide your current GPS:</p>
+                <div class="flex space-x-2 mb-2">
+                    <input type="text" id="arriveLat" placeholder="Lat" class="border rounded px-2 py-1 w-24 text-sm" />
+                    <input type="text" id="arriveLng" placeholder="Lng" class="border rounded px-2 py-1 w-24 text-sm" />
+                </div>
+                <button onclick="arrive()" class="bg-indigo-600 text-white px-4 py-1 rounded text-sm hover:bg-indigo-700">I Have Arrived!</button>
+            </div>
+
+            <pre id="jsonViewer" class="json-viewer mt-4">{}</pre>
+        </div>
+    </div>
+</div>
+
+<script>
+    const API_BASE = "http://localhost:8000";
+    let currentTaskId = null;
+    let targetCoords = null;
+
+    function getUserId() {
+        return document.getElementById("userId").value;
+    }
+
+    function log(panel, msg) {
+        const el = document.getElementById(panel);
+        el.innerText = `${new Date().toLocaleTimeString()} - ${msg}\n` + el.innerText;
+    }
+    
+    function viewJson(data) {
+        document.getElementById("jsonViewer").innerText = JSON.stringify(data, null, 2);
+    }
+
+    async function req(path, method="GET", body=null) {
+        const headers = { 
+            "Content-Type": "application/json",
+            "user-id": getUserId()
+        };
+        const init = { method, headers };
+        if (body) init.body = JSON.stringify(body);
+        
+        try {
+            const res = await fetch(`${API_BASE}${path}`, init);
+            const data = await res.json();
+            return {ok: res.ok, data};
+        } catch (e) {
+            return {ok: false, data: {error: e.message}};
+        }
+    }
+
+    async function syncData() {
+        const cal = parseFloat(document.getElementById("syncCal").value);
+        const cgm = parseFloat(document.getElementById("syncCgm").value);
+        const {ok, data} = await req("/internal/mock/sync-data", "POST", {
+            user_id: getUserId(), calories_burned: cal, cgm_value: cgm
+        });
+        log("logPanel1", `Sync HTTP ${ok ? 'OK' : 'FAIL'} - ${JSON.stringify(data)}`);
+    }
+
+    async function triggerEngine() {
+        const {ok, data} = await req("/internal/agent/trigger", "POST", { user_id: getUserId() });
+        log("logPanel1", `Trigger HTTP ${ok ? 'OK' : 'FAIL'} - ${JSON.stringify(data)}`);
+        
+        setTimeout(() => {
+            log("logPanel1", "You should now check 'Get Active Task' on the client App");
+            fetchActiveTask();
+        }, 1500); // Give small simulated delay
+    }
+
+    async function fetchPoints() {
+        const summary = await req(`/points/summary?user_id=${getUserId()}`);
+        const flower = await req(`/points/flower?user_id=${getUserId()}`);
+        viewJson({ points: summary.data, flower_state: flower.data });
+    }
+
+    async function fetchActiveTask() {
+        const {ok, data} = await req(`/tasks/dynamic/active?user_id=${getUserId()}`);
+        document.getElementById("selectionArea").classList.add("hidden");
+        document.getElementById("arrivalArea").classList.add("hidden");
+        
+        if (!ok || !data.task_id) {
+            viewJson({ message: "No active task found for this user." });
+            return;
+        }
+
+        currentTaskId = data.task_id;
+        viewJson(data);
+
+        if (data.task_status === "awaiting_selection") {
+            document.getElementById("selectionArea").classList.remove("hidden");
+            const btns = document.getElementById("parkButtons");
+            btns.innerHTML = "";
+            (data.parks || []).forEach(p => {
+                const b = document.createElement("button");
+                b.className = "bg-yellow-400 text-yellow-900 px-3 py-1 rounded text-xs hover:bg-yellow-500 font-bold";
+                b.textContent = `Select ${p.name}`;
+                b.onclick = () => selectDestination(p.index, p.lat, p.lng);
+                btns.appendChild(b);
+            });
+        } else if (data.task_status === "pending") {
+            document.getElementById("arrivalArea").classList.remove("hidden");
+            if (data.destination) {
+                targetCoords = { lat: data.destination.lat, lng: data.destination.lng };
+                // pre-fill correct ones slightly off for testing
+                document.getElementById("arriveLat").value = targetCoords.lat + 0.0005;
+                document.getElementById("arriveLng").value = targetCoords.lng + 0.0005;
+            }
+        }
+    }
+
+    async function selectDestination(index, lat, lng) {
+        log("logPanel1", `Waking up LangGraph agent for selection ${index}...`);
+        viewJson({status: "Calling LangChain Pipeline... please wait..."});
+        
+        const {ok, data} = await req(`/tasks/dynamic/${currentTaskId}/select-destination?user_id=${getUserId()}`, "POST", { park_index: index });
+        if (ok) {
+            log("logPanel1", "LangGraph processing complete. Content generated.");
+            fetchActiveTask();
+        } else {
+            viewJson(data);
+        }
+    }
+
+    async function arrive() {
+        if (!currentTaskId) return;
+        const lat = parseFloat(document.getElementById("arriveLat").value);
+        const lng = parseFloat(document.getElementById("arriveLng").value);
+        
+        const {ok, data} = await req(`/tasks/dynamic/${currentTaskId}/arrive`, "POST", { lat, lng });
+        viewJson(data);
+        if (ok && data.passed) {
+            document.getElementById("arrivalArea").classList.add("hidden");
+            setTimeout(fetchPoints, 1000);
+        }
+    }
+
+</script>
+</body>
+</html>
