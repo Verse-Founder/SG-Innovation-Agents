@@ -34,7 +34,7 @@ def seed_db():
         active_user_id = "demo_user_active"
         db.add(User(
             user_id=active_user_id, name="Alice (Active)", gender="female",
-            birth_year=1990, height_cm=165.0, weight_kg=62.0
+            birth_year=1990, height_cm=165.0, weight_kg=62.0, waist_cm=72.0
         ))
         db.add(DynamicTaskRule(user_id=active_user_id, base_calorie=300, trigger_threshold=0.6))
         db.add(RewardLog(user_id=active_user_id, total_points=50))
@@ -61,7 +61,7 @@ def seed_db():
         sedentary_user_id = "demo_user_sedentary"
         db.add(User(
             user_id=sedentary_user_id, name="Bob (Sedentary)", gender="male",
-            birth_year=1985, height_cm=175.0, weight_kg=95.0
+            birth_year=1985, height_cm=175.0, weight_kg=95.0, waist_cm=102.0
         ))
         db.add(DynamicTaskRule(user_id=sedentary_user_id, base_calorie=300, trigger_threshold=0.6))
         db.add(RewardLog(user_id=sedentary_user_id, total_points=10))
@@ -90,7 +90,7 @@ def seed_db():
         hypo_user_id = "demo_user_hypo"
         db.add(User(
             user_id=hypo_user_id, name="Charlie (Low BG)", gender="male",
-            birth_year=1970, height_cm=170.0, weight_kg=60.0
+            birth_year=1970, height_cm=170.0, weight_kg=60.0, waist_cm=78.0
         ))
         db.add(DynamicTaskRule(user_id=hypo_user_id, base_calorie=300, trigger_threshold=0.6))
         db.add(RewardLog(user_id=hypo_user_id, total_points=0))

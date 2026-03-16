@@ -1,3 +1,4 @@
+
 import os
 import tempfile
 from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks, File, UploadFile, Header
@@ -11,7 +12,8 @@ from task_publish.db.session import get_db
 from task_publish.db.models import DynamicTaskLog, RewardLog, QuizBank, RoutineTaskLog, User, UserExerciseLog, UserCgmLog, DynamicTaskRule, UserHrLog
 from task_publish.task_agent import agent_orchestrator
 from task_publish.task_agent.graph import copy_subgraph
-
+from task_publish.task_agent.context_loader import fetch_context
+from task_publish.task_agent.rule_engine import get_rule_for_user, calculate
 from task_publish.api.routine_tasks import submit_meal_photo, fetch_daily_quiZ
 
 router = APIRouter()
@@ -40,11 +42,13 @@ class MockSyncReq(BaseModel):
     user_id: str
     calories_burned: float
     cgm_value: float
+    lat: Optional[float] = 1.2838  # Default CBD
+    lng: Optional[float] = 103.8511
 
 # --- 8.2 Dynamic exercise tasks ---
 
 @router.get("/tasks/dynamic/active")
-def get_active_dynamic_task(user_id: str = "mock_user", db: Session = Depends(get_db)):
+def get_active_dynamic_task(user_id: str, db: Session = Depends(get_db)):
     """Returns the active dynamic task or null (Section 8.2)"""
     task = db.query(DynamicTaskLog).filter(
         DynamicTaskLog.user_id == user_id,
@@ -74,7 +78,7 @@ def get_active_dynamic_task(user_id: str = "mock_user", db: Session = Depends(ge
     }
 
 @router.post("/tasks/dynamic/{task_id}/select-destination")
-async def select_destination(task_id: int, req: SelectDestinationReq, user_id: str = "mock_user", db: Session = Depends(get_db)):
+async def select_destination(task_id: int, req: SelectDestinationReq, user_id: str, db: Session = Depends(get_db)):
     task = db.query(DynamicTaskLog).filter(
         DynamicTaskLog.task_id == task_id,
         DynamicTaskLog.user_id == user_id,
@@ -90,17 +94,34 @@ async def select_destination(task_id: int, req: SelectDestinationReq, user_id: s
 
     selected_park = parks[req.park_index]
     
-    # Simulate LangGraph execution
-    # In reality, this requires mocking AgentState fully, here we stub a mock state execution
-    # state = await copy_subgraph.ainvoke({"user_id": user_id, "selected_park": selected_park, ...})
+    # Reload Context & Rules for LangGraph execution state
+    ctx = fetch_context(db, user_id)
+    rule = get_rule_for_user(db, user_id)
+    rule_res = calculate(ctx, rule)
     
-    # Mocking task content returned by graph as Analyst -> Advisor -> Writer completes
-    content = {
-        "title": "Time for a walk!",
-        "body": f"Head to {selected_park['name']} for a walk.",
-        "cta": "I have arrived",
-        "destination": selected_park
+    # Execute actual Agent (SeaLion Analyst -> Advisor -> Writer)
+    state_in = {
+        "user_id": user_id,
+        "trigger_source": "user_selection",
+        "user_profile": ctx["user_profile"],
+        "calories_burned_today": ctx["calories_burned_today"],
+        "avg_bg_last_2h": ctx["avg_bg_last_2h"],
+        "exercise_history": ctx["exercise_history"],
+        "last_gps": ctx["last_gps"],
+        "rule": dict(rule) if hasattr(rule, "items") else rule,
+        "rule_result": rule_res,
+        "selected_park": selected_park,
+        "park_candidates": parks,
     }
+    
+    # Run graph asynchronously
+    final_state = await copy_subgraph.ainvoke(state_in)
+    
+    if "task_content" not in final_state or not final_state["task_content"]:
+        raise HTTPException(status_code=500, detail="Failed to generate task content using LangGraph")
+
+    content = final_state["task_content"]
+    content["destination"] = selected_park
 
     task.target_lat = selected_park["lat"]
     task.target_lng = selected_park["lng"]
@@ -119,6 +140,17 @@ def arrive_at_destination(task_id: int, req: ArriveReq, db: Session = Depends(ge
         return res
     except agent_orchestrator.TaskNotActive as e:
         raise HTTPException(status_code=400, detail=str(e))
+
+@router.get("/internal/user-context/{user_id}")
+def get_user_context(user_id: str, db: Session = Depends(get_db)):
+    ctx = fetch_context(db, user_id)
+    rule = get_rule_for_user(db, user_id)
+    rule_res = calculate(ctx, rule)
+    return {
+        "context": ctx,
+        "rule": dict(rule) if hasattr(rule, "items") else rule,
+        "rule_result": rule_res
+    }
 
 @router.post("/internal/agent/trigger")
 def internal_trigger(req: TriggerReq, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
@@ -159,17 +191,26 @@ def mock_sync_data(req: MockSyncReq, db: Session = Depends(get_db)):
     db.add(UserHrLog(
         user_id=req.user_id,
         heart_rate=80,
-        gps_lat=1.3521,
-        gps_lng=103.8198,
+        gps_lat=req.lat,
+        gps_lng=req.lng,
         recorded_at=datetime.utcnow()
     ))
     db.commit()
     return {"status": "synced"}
 
+# --- Test Utils ---
+
+@router.delete("/internal/test/reset-tasks")
+def reset_tasks_for_testing(user_id: str, db: Session = Depends(get_db)):
+    """DEV ONLY: Delete all dynamic tasks for a user so the daily guard can re-trigger."""
+    deleted = db.query(DynamicTaskLog).filter(DynamicTaskLog.user_id == user_id).delete()
+    db.commit()
+    return {"deleted": deleted, "user_id": user_id}
+
 # --- 8.3 Points and flower ---
 
 @router.get("/points/summary")
-def get_points_summary(user_id: str = "mock_user", db: Session = Depends(get_db)):
+def get_points_summary(user_id: str, db: Session = Depends(get_db)):
     summary = db.query(RewardLog).filter(RewardLog.user_id == user_id).first()
     if not summary:
         return {"total_points": 0, "accumulated_points": 0, "consumed_points": 0}
@@ -181,7 +222,7 @@ def get_points_summary(user_id: str = "mock_user", db: Session = Depends(get_db)
     }
 
 @router.get("/points/flower")
-def get_points_flower(user_id: str = "mock_user", db: Session = Depends(get_db)):
+def get_points_flower(user_id: str, db: Session = Depends(get_db)):
     return agent_orchestrator.get_flower_state(db, user_id)
 
 # --- 8.1 Routine tasks (Stubs) ---
@@ -207,7 +248,7 @@ async def upload_meal_photo(file: UploadFile = File(...), user_id: str = Header(
     return res
 
 @router.get("/tasks/quiz/today")
-def get_quiz_today(user_id: str = "mock_user", db: Session = Depends(get_db)):
+def get_quiz_today(user_id: str, db: Session = Depends(get_db)):
     return fetch_daily_quiZ(db, user_id)
 
 @router.post("/tasks/quiz/submit")

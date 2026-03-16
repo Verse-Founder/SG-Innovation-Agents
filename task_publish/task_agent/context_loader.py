@@ -2,7 +2,7 @@ import json
 from typing import Dict, Any, List
 from sqlalchemy.orm import Session
 from sqlalchemy import text
-from datetime import date
+from datetime import date, datetime, timedelta
 from task_publish.db.models import User
 
 def fetch_context(db: Session, user_id: str) -> Dict[str, Any]:
@@ -17,36 +17,46 @@ def fetch_context(db: Session, user_id: str) -> Dict[str, Any]:
         "gender": user.gender if user else "other",
         "weight_kg": float(user.weight_kg) if user and user.weight_kg else 70.0,
         "height_cm": float(user.height_cm) if user and user.height_cm else 170.0,
-        "bmi": bmi
+        "bmi": bmi,
+        "waist_cm": float(user.waist_cm) if user and user.waist_cm else None,
+        "birth_year": user.birth_year if user else None,
     }
 
-    # 2. Calories burned today
+    today_start = datetime.combine(date.today(), datetime.min.time())
+    two_hours_ago = datetime.utcnow() - timedelta(hours=2)
+
+    # 2. Calories burned today (PostgreSQL-compatible)
     cbt = db.scalar(text("""
         SELECT COALESCE(SUM(calories_burned), 0)
         FROM user_exercise_log
-        WHERE user_id = :u AND date(started_at) = date('now')
-    """), {"u": user_id})
+        WHERE user_id = :u AND started_at >= :today
+    """), {"u": user_id, "today": today_start})
 
-    # 3. BG avg last 2h
+    # 3. BG avg last 2h (PostgreSQL-compatible)
     bg = db.scalar(text("""
         SELECT AVG(glucose)
         FROM user_cgm_log
-        WHERE user_id = :u AND datetime(recorded_at) >= datetime('now', '-2 hours')
-    """), {"u": user_id})
+        WHERE user_id = :u AND recorded_at >= :cutoff
+    """), {"u": user_id, "cutoff": two_hours_ago})
 
-    # 4. History last 3
+    # 4. History last 3 walking sessions with duration
     history_rows = db.execute(text("""
-        SELECT exercise_type, calories_burned
+        SELECT exercise_type,
+               calories_burned,
+               EXTRACT(EPOCH FROM (ended_at - started_at)) / 60 AS duration_min
         FROM user_exercise_log
         WHERE user_id = :u AND exercise_type = 'walking'
         ORDER BY started_at DESC
         LIMIT 3
     """), {"u": user_id}).fetchall()
     
-    # SQLite does not have TIMESTAMPDIFF, skipping exact duration_min calculation in this mock.
-    history = [{"type": h.exercise_type, "duration_min": 10, "calories_burned": float(h.calories_burned or 0)} for h in history_rows]
+    history = [{
+        "type": h.exercise_type,
+        "duration_min": round(h.duration_min) if h.duration_min else 10,
+        "calories_burned": float(h.calories_burned or 0)
+    } for h in history_rows]
 
-    # 5. GPS from latest HR log per database spec "simulated from Apple Watch, 10 min a row" 
+    # 5. GPS from latest HR log (Apple Watch 10-min interval simulation)
     gps_row = db.execute(text("""
         SELECT gps_lat, gps_lng 
         FROM user_hr_log 

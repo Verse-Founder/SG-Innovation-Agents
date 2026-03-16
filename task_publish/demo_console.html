@@ -1,215 +1,734 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Task Agent - Demo Console</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <title>Dynamic Task Publication - E2E Simulator</title>
     <style>
-        .json-viewer {
-            background-color: #1e1e1e;
-            color: #d4d4d4;
-            padding: 1rem;
-            border-radius: 0.5rem;
+        /* Modern, clean, dashboard aesthetic following specific layout requests */
+        :root {
+            --p: #6366f1;
+            --ph: #4f46e5;
+            --g: #10b981;
+            --r: #ef4444;
+            --bg: #f8fafc;
+            --text: #334155;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        body {
+            background: var(--bg);
+            color: var(--text);
+            padding: 16px;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 20px;
+            background: #fff;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+            margin-bottom: 16px;
+        }
+
+        .header h1 {
+            font-size: 1.2rem;
+            color: var(--p);
+        }
+
+        .layout {
+            display: grid;
+            grid-template-columns: 320px 1fr 380px;
+            grid-template-rows: 1fr auto;
+            gap: 16px;
+            flex: 1;
+            min-height: 0;
+        }
+
+        .panel {
+            background: #fff;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .panel-h {
+            background: #f1f5f9;
+            padding: 12px 16px;
+            font-weight: 600;
+            font-size: 0.9rem;
+            border-bottom: 1px solid #e2e8f0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .panel-c {
+            padding: 16px;
+            overflow-y: auto;
+            flex: 1;
+        }
+
+        select,
+        input {
+            padding: 8px 12px;
+            border: 1px solid #cbd5e1;
+            border-radius: 6px;
+            font-size: 0.85rem;
+        }
+
+        select {
+            min-width: 200px;
+            font-weight: 500;
+        }
+
+        .row {
+            display: flex;
+            justify-content: space-between;
+            padding: 6px 0;
+            border-bottom: 1px solid #f1f5f9;
+            font-size: 0.85rem;
+        }
+
+        .row label {
+            color: #64748b;
+        }
+
+        .row span {
+            font-weight: 500;
+        }
+
+        .btn {
+            width: 100%;
+            border: none;
+            padding: 10px;
+            border-radius: 6px;
+            font-weight: 600;
+            color: #fff;
+            cursor: pointer;
+            transition: 0.2s;
+            margin-top: 10px;
+        }
+
+        .btn-p {
+            background: var(--p);
+        }
+
+        .btn-p:hover {
+            background: var(--ph);
+        }
+
+        .btn-g {
+            background: var(--g);
+        }
+
+        .btn-r {
+            background: var(--r);
+        }
+
+        .btn-gray {
+            background: #94a3b8;
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .form-grp {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+            font-size: 0.85rem;
+        }
+
+        .form-grp input {
+            width: 110px;
+            text-align: right;
+        }
+
+        .badge {
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-size: 0.7rem;
+            font-weight: 600;
+        }
+
+        .b-green {
+            background: #dcfce7;
+            color: #166534;
+        }
+
+        .b-red {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        .b-yellow {
+            background: #fef9c3;
+            color: #854d0e;
+        }
+
+        .b-blue {
+            background: #dbeafe;
+            color: #1e40af;
+        }
+
+        .park-card {
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            padding: 12px;
+            margin-bottom: 10px;
+            cursor: pointer;
+            transition: 0.15s;
+        }
+
+        .park-card:hover {
+            border-color: var(--p);
+            background: #f5f3ff;
+        }
+
+        .park-card h4 {
+            font-size: 0.95rem;
+            margin-bottom: 4px;
+        }
+
+        .park-card div {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.8rem;
+            color: #64748b;
+        }
+
+        .sys-log {
+            background: #0f172a;
+            color: #4ade80;
             font-family: monospace;
-            white-space: pre-wrap;
-            min-height: 100px;
+            font-size: 0.8rem;
+            padding: 12px;
+            height: 160px;
+            overflow-y: auto;
+            border-radius: 8px;
+            margin-top: 16px;
+            grid-column: 1 / -1;
+        }
+
+        .sys-log p {
+            margin-bottom: 2px;
+        }
+
+        .llm-box {
+            background: #f5f3ff;
+            border: 1px solid #ddd6fe;
+            border-radius: 6px;
+            padding: 16px;
+            margin-bottom: 16px;
+        }
+
+        .llm-box h3 {
+            color: var(--p);
+            margin-bottom: 8px;
+            font-size: 1rem;
+        }
+
+        .llm-box p {
+            font-size: 0.85rem;
+            line-height: 1.5;
+            color: #475569;
+        }
+
+        .progress-container {
+            margin: 16px 0;
+        }
+
+        .progress-bar {
+            height: 8px;
+            background: #e2e8f0;
+            border-radius: 4px;
+            overflow: hidden;
+            margin-top: 6px;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: var(--p);
+            width: 0%;
+            transition: width 0.5s linear;
+        }
+
+        .metrics-row {
+            display: flex;
+            gap: 8px;
+            justify-content: space-between;
+            font-size: 0.8rem;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .empty-state {
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #94a3b8;
+            font-size: 0.85rem;
+            font-style: italic;
+            text-align: center;
+            padding: 20px;
+        }
+
+        .live-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            background: #eff6ff;
+            color: var(--p);
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-weight: 600;
+            font-size: 0.75rem;
+            border: 1px solid #bfdbfe;
+        }
+
+        .live-dot {
+            width: 6px;
+            height: 6px;
+            background: var(--p);
+            border-radius: 50%;
+            animation: pulse 1s infinite;
+        }
+
+        @keyframes pulse {
+            0% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.3;
+            }
+
+            100% {
+                opacity: 1;
+            }
         }
     </style>
 </head>
-<body class="bg-gray-100 text-gray-800 p-8">
 
-<div class="max-w-6xl mx-auto space-y-6">
-    <div class="bg-white p-6 rounded-lg shadow">
-        <h1 class="text-2xl font-bold text-indigo-600 mb-2">SG Innovation - Task Agent / LangGraph Console</h1>
-        <p class="text-sm text-gray-500 mb-4">Simulate Apple Watch / CGM device synchronization and trigger the dynamic task agent pipeline.</p>
-        
-        <div class="flex items-center space-x-4">
-            <label class="font-bold">Active User ID:</label>
-            <input type="text" id="userId" value="demo_user_001" class="border border-gray-300 rounded px-3 py-2 w-64" />
+<body>
+
+    <div class="header">
+        <h1>Dynamic Task Publication - E2E Simulator</h1>
+        <div style="display:flex; gap:12px; align-items:center;">
+            <span id="server-status" class="badge b-yellow">Checking Server...</span>
+            <button class="btn btn-gray" style="margin:0; padding:6px 12px; width:auto; font-size:0.75rem"
+                onclick="clearTasks()">🔄 Reset Today's Tasks</button>
         </div>
     </div>
 
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-        
-        <!-- Panel 1: Mock Stream & Trigger -->
-        <div class="bg-white p-6 rounded-lg shadow space-y-4">
-            <h2 class="text-xl font-bold border-b pb-2">1. Upstream Trigger Simulation</h2>
-            
-            <div class="bg-blue-50 p-4 rounded border border-blue-100">
-                <h3 class="font-semibold mb-2">Simulate Data Sync (Past 10 mins)</h3>
-                <div class="flex space-x-4 mb-3">
-                    <div>
-                        <label class="block text-xs text-gray-500">Calories Burned (e.g. 50)</label>
-                        <input type="number" id="syncCal" value="50" class="border rounded px-2 py-1 w-24">
-                    </div>
-                    <div>
-                        <label class="block text-xs text-gray-500">Current CGM (mmol/L)</label>
-                        <input type="number" id="syncCgm" value="5.5" step="0.1" class="border rounded px-2 py-1 w-24">
-                    </div>
-                </div>
-                <button onclick="syncData()" class="bg-blue-600 text-white px-4 py-2 rounded text-sm hover:bg-blue-700 transition">Push Mock Data</button>
-            </div>
+    <div class="layout">
 
-            <div class="bg-red-50 p-4 rounded border border-red-100">
-                <h3 class="font-semibold mb-2">Trigger Main Evaluation (15:00 UTC)</h3>
-                <p class="text-xs text-gray-600 mb-3">Forces the Agent Orchestrator to check if context meets trigger thresholds.</p>
-                <button onclick="triggerEngine()" class="bg-red-600 text-white px-4 py-2 rounded text-sm hover:bg-red-700 transition">Execute RuleEngine & MapTool</button>
+        <!-- LEFT: Raw Data Input & Static Profile -->
+        <div class="panel">
+            <div class="panel-h">1. Raw Data Input</div>
+            <div class="panel-c">
+                <div style="margin-bottom: 16px;">
+                    <label
+                        style="display:block; font-size:0.8rem; font-weight:600; color:#64748b; margin-bottom:6px">Select
+                        User ID</label>
+                    <select id="user-select" style="width:100%" onchange="loadUser()">
+                        <option value="demo_user_sedentary">demo_user_sedentary (Bob)</option>
+                        <option value="demo_user_active">demo_user_active (Alice)</option>
+                        <option value="demo_user_hypo">demo_user_hypo (Charlie - Low BG)</option>
+                    </select>
+                </div>
+
+                <div
+                    style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:6px; padding:12px; margin-bottom:20px">
+                    <div
+                        style="font-size:0.75rem; font-weight:700; color:#94a3b8; margin-bottom:8px; text-transform:uppercase">
+                        Static DB Records</div>
+                    <div class="row"><label>Name</label><span id="db-name">-</span></div>
+                    <div class="row"><label>Gender</label><span id="db-gender">-</span></div>
+                    <div class="row"><label>Birth Year</label><span id="db-birth">-</span></div>
+                    <div class="row"><label>Height</label><span id="db-height">-</span></div>
+                    <div class="row"><label>Weight</label><span id="db-weight">-</span></div>
+                    <div class="row"><label>Waist</label><span id="db-waist">-</span></div>
+                    <div class="row"><label>BMI</label><span id="db-bmi">-</span></div>
+                    <div class="row"><label>Base Target</label><span id="db-base">-</span></div>
+                </div>
+
+                <div style="background:#fff; border:1px solid #e2e8f0; border-radius:6px; padding:12px;">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+                        <div style="font-size:0.75rem; font-weight:700; color:#94a3b8; text-transform:uppercase">Device
+                            Telemetry Sync</div>
+                        <span class="badge b-blue">~10m interval</span>
+                    </div>
+                    <div class="form-grp"><label>CGM Glucose (mmol/L)</label><input type="number" id="in-cgm" step="0.1"
+                            value="5.5"></div>
+                    <div class="form-grp"><label>Calories Burned (kcal)</label><input type="number" id="in-cals"
+                            value="50"></div>
+                    <div class="form-grp"><label>Lat (GPS)</label><input type="number" id="in-lat" step="0.0001"
+                            value="1.2838"></div>
+                    <div class="form-grp"><label>Lng (GPS)</label><input type="number" id="in-lng" step="0.0001"
+                            value="103.8511"></div>
+                    <button class="btn btn-gray" style="background:#475569" onclick="pushTelemetry()">Push Data to
+                        PostgreSQL</button>
+                </div>
+
+                <div style="margin-top:20px; padding-top:16px; border-top:1px dashed #cbd5e1">
+                    <div class="row"><label>Adjusted Target</label><span id="calc-adj" style="color:var(--p)">-</span>
+                    </div>
+                    <div class="row"><label>Engine Decision</label><span id="calc-dec">-</span></div>
+                </div>
             </div>
-            
-            <pre id="logPanel1" class="text-xs text-gray-400 bg-gray-50 p-2 rounded h-24 overflow-auto">Awaiting actions...</pre>
         </div>
 
-        <!-- Panel 2: Task States -->
-        <div class="bg-white p-6 rounded-lg shadow space-y-4">
-            <h2 class="text-xl font-bold border-b pb-2">2. App Client / Task Status</h2>
-            
-            <div class="flex space-x-2">
-                <button onclick="fetchActiveTask()" class="bg-green-600 text-white px-4 py-2 rounded text-sm hover:bg-green-700">Get Active Task</button>
-                <button onclick="fetchPoints()" class="bg-purple-600 text-white px-4 py-2 rounded text-sm hover:bg-purple-700">Refresh Assets (Flowers)</button>
-            </div>
-            
-            <div id="selectionArea" class="hidden mt-4 bg-yellow-50 p-3 rounded border border-yellow-200">
-                <p class="text-sm font-bold text-yellow-800 mb-2">Task Awaiting Selection! Pick a park to wake up LangGraph:</p>
-                <div id="parkButtons" class="flex space-x-2"></div>
-            </div>
-            
-            <div id="arrivalArea" class="hidden mt-4 bg-indigo-50 p-3 rounded border border-indigo-200">
-                <p class="text-sm font-bold text-indigo-800 mb-2">Task Pending Arrival!</p>
-                <p class="text-xs text-gray-600 mb-1">Target GPS is locked. Provide your current GPS:</p>
-                <div class="flex space-x-2 mb-2">
-                    <input type="text" id="arriveLat" placeholder="Lat" class="border rounded px-2 py-1 w-24 text-sm" />
-                    <input type="text" id="arriveLng" placeholder="Lng" class="border rounded px-2 py-1 w-24 text-sm" />
-                </div>
-                <button onclick="arrive()" class="bg-indigo-600 text-white px-4 py-1 rounded text-sm hover:bg-indigo-700">I Have Arrived!</button>
-            </div>
+        <!-- MIDDLE: Backend Logic & Park List -->
+        <div class="panel">
+            <div class="panel-h">2. Backend Reasoning & Maps API call</div>
+            <div class="panel-c" style="display:flex; flex-direction:column">
+                <button class="btn btn-p" id="btn-trigger" onclick="runEngine()">Execute Rule Engine & Fetch Maps
+                    API</button>
 
-            <pre id="jsonViewer" class="json-viewer mt-4">{}</pre>
+                <div style="margin-top:20px; flex:1; display:flex; flex-direction:column">
+                    <div style="font-size:0.85rem; font-weight:600; color:#475569; margin-bottom:12px">Google Maps
+                        Recommended Parks</div>
+                    <div id="park-list" style="flex:1; overflow-y:auto; padding-right:4px;">
+                        <div class="empty-state">Trigger the engine above to see dynamic park recommendations based on
+                            the pushed GPS coordinates.</div>
+                    </div>
+                </div>
+            </div>
         </div>
+
+        <!-- RIGHT: Output & Live Simulation -->
+        <div class="panel">
+            <div class="panel-h">3. Final Output & Live Task Tracking</div>
+            <div class="panel-c" style="display:flex; flex-direction:column">
+
+                <div id="llm-output" style="min-height: 180px;">
+                    <div class="empty-state">Select a park destination from the middle column to trigger the Sea-Lion
+                        LLM task generation...</div>
+                </div>
+
+                <div style="border-top:1px solid #e2e8f0; padding-top:16px; margin-top:auto">
+                    <div style="display:flex; justify-content:space-between; align-items:center">
+                        <div style="font-size:0.85rem; font-weight:600; color:#475569;">GPS Distance Verification</div>
+                        <span id="task-status" class="badge b-yellow" style="opacity:0">Pending</span>
+                    </div>
+
+                    <div class="progress-container">
+                        <div class="metrics-row">
+                            <div class="live-badge" style="visibility:hidden" id="live-ind">
+                                <div class="live-dot"></div>Live GPS
+                            </div>
+                            <div style="text-align:right"><strong id="dist-curr"
+                                    style="color:var(--p);font-size:1.1rem">--</strong> <span style="color:#64748b">/
+                                    <span id="dist-total">--</span> m</span></div>
+                        </div>
+                        <div class="progress-bar">
+                            <div class="progress-fill" id="p-fill"></div>
+                        </div>
+                        <div class="metrics-row" style="margin-top:6px; color:#94a3b8">
+                            <span>Start</span><span>200m Threshold</span><span>Destination</span>
+                        </div>
+                    </div>
+
+                    <button class="btn btn-g" id="btn-walk" style="display:none" onclick="startWalk()">Simulate Walking
+                        (Starts GPS Polling)</button>
+                    <button class="btn btn-r" id="btn-stop" style="display:none" onclick="stopWalk()">Stop
+                        Simulation</button>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- BOTTOM ROW: SYSTEM LOGS -->
+        <div class="sys-log" id="log-box">
+            <p style="color:#94a3b8">Initializing E2E Console System...</p>
+        </div>
+
     </div>
-</div>
 
-<script>
-    const API_BASE = "http://localhost:8000";
-    let currentTaskId = null;
-    let targetCoords = null;
+    <script>
+        // --- CORE STATE ---
+        const API = 'http://localhost:8000';
+        let activeUser = 'demo_user_sedentary';
+        let currentTask = null;
+        let walkInt = null;
+        let liveLat = 1.2838, liveLng = 103.8511;
+        let destLat = 0, destLng = 0;
+        let initialDist = 0;
 
-    function getUserId() {
-        return document.getElementById("userId").value;
-    }
-
-    function log(panel, msg) {
-        const el = document.getElementById(panel);
-        el.innerText = `${new Date().toLocaleTimeString()} - ${msg}\n` + el.innerText;
-    }
-    
-    function viewJson(data) {
-        document.getElementById("jsonViewer").innerText = JSON.stringify(data, null, 2);
-    }
-
-    async function req(path, method="GET", body=null) {
-        const headers = { 
-            "Content-Type": "application/json",
-            "user-id": getUserId()
-        };
-        const init = { method, headers };
-        if (body) init.body = JSON.stringify(body);
-        
-        try {
-            const res = await fetch(`${API_BASE}${path}`, init);
-            const data = await res.json();
-            return {ok: res.ok, data};
-        } catch (e) {
-            return {ok: false, data: {error: e.message}};
-        }
-    }
-
-    async function syncData() {
-        const cal = parseFloat(document.getElementById("syncCal").value);
-        const cgm = parseFloat(document.getElementById("syncCgm").value);
-        const {ok, data} = await req("/internal/mock/sync-data", "POST", {
-            user_id: getUserId(), calories_burned: cal, cgm_value: cgm
-        });
-        log("logPanel1", `Sync HTTP ${ok ? 'OK' : 'FAIL'} - ${JSON.stringify(data)}`);
-    }
-
-    async function triggerEngine() {
-        const {ok, data} = await req("/internal/agent/trigger", "POST", { user_id: getUserId() });
-        log("logPanel1", `Trigger HTTP ${ok ? 'OK' : 'FAIL'} - ${JSON.stringify(data)}`);
-        
-        setTimeout(() => {
-            log("logPanel1", "You should now check 'Get Active Task' on the client App");
-            fetchActiveTask();
-        }, 1500); // Give small simulated delay
-    }
-
-    async function fetchPoints() {
-        const summary = await req(`/points/summary?user_id=${getUserId()}`);
-        const flower = await req(`/points/flower?user_id=${getUserId()}`);
-        viewJson({ points: summary.data, flower_state: flower.data });
-    }
-
-    async function fetchActiveTask() {
-        const {ok, data} = await req(`/tasks/dynamic/active?user_id=${getUserId()}`);
-        document.getElementById("selectionArea").classList.add("hidden");
-        document.getElementById("arrivalArea").classList.add("hidden");
-        
-        if (!ok || !data.task_id) {
-            viewJson({ message: "No active task found for this user." });
-            return;
+        // --- UTILITIES ---
+        function log(msg, color = '#4ade80') {
+            const box = document.getElementById('log-box');
+            const d = new Date();
+            const time = d.getHours().toString().padStart(2, '0') + ':' + d.getMinutes().toString().padStart(2, '0') + ':' + d.getSeconds().toString().padStart(2, '0');
+            const p = document.createElement('p');
+            p.style.color = color;
+            p.textContent = `[${time}] ${msg}`;
+            box.appendChild(p);
+            box.scrollTop = box.scrollHeight;
         }
 
-        currentTaskId = data.task_id;
-        viewJson(data);
+        function haversine(lat1, lon1, lat2, lon2) {
+            const p = 0.0174532925199; const c = Math.cos;
+            const a = 0.5 - c((lat2 - lat1) * p) / 2 + c(lat1 * p) * c(lat2 * p) * (1 - c((lon2 - lon1) * p)) / 2;
+            return Math.round(12742000 * Math.asin(Math.sqrt(a)));
+        }
 
-        if (data.task_status === "awaiting_selection") {
-            document.getElementById("selectionArea").classList.remove("hidden");
-            const btns = document.getElementById("parkButtons");
-            btns.innerHTML = "";
-            (data.parks || []).forEach(p => {
-                const b = document.createElement("button");
-                b.className = "bg-yellow-400 text-yellow-900 px-3 py-1 rounded text-xs hover:bg-yellow-500 font-bold";
-                b.textContent = `Select ${p.name}`;
-                b.onclick = () => selectDestination(p.index, p.lat, p.lng);
-                btns.appendChild(b);
-            });
-        } else if (data.task_status === "pending") {
-            document.getElementById("arrivalArea").classList.remove("hidden");
-            if (data.destination) {
-                targetCoords = { lat: data.destination.lat, lng: data.destination.lng };
-                // pre-fill correct ones slightly off for testing
-                document.getElementById("arriveLat").value = targetCoords.lat + 0.0005;
-                document.getElementById("arriveLng").value = targetCoords.lng + 0.0005;
+        async function request(path, opts = {}) {
+            try {
+                const res = await fetch(API + path, {
+                    headers: { 'Content-Type': 'application/json' },
+                    ...opts
+                });
+                const data = await res.json().catch(() => ({}));
+                return { ok: res.ok, status: res.status, data };
+            } catch (e) { return { ok: false, error: e.message }; }
+        }
+
+        // --- FLOW STEPS ---
+        async function boot() {
+            const r = await request('/docs');
+            const s = document.getElementById('server-status');
+            if (r.ok || r.status === 200) { s.className = "badge b-green"; s.textContent = "Server Connected"; log("FastAPI backend connection established."); }
+            else { s.className = "badge b-red"; s.textContent = "Server Offline"; log("Failed to connect to backend.", "#ef4444"); }
+            await loadUser();
+        }
+
+        async function loadUser() {
+            activeUser = document.getElementById('user-select').value;
+            log(`Fetching static data for ${activeUser}...`, '#93c5fd');
+            stopWalk(); resetOutputUI();
+
+            const r = await request(`/internal/user-context/${activeUser}`);
+            if (!r.ok) { log(`Error loading profile: ${JSON.stringify(r.data)}`, '#ef4444'); return; }
+
+            const p = r.data.context.user_profile;
+            const ru = r.data.rule_result;
+            const ctx = r.data.context;
+
+            document.getElementById('db-name').textContent = p.name || '-';
+            document.getElementById('db-gender').textContent = p.gender || '-';
+            document.getElementById('db-birth').textContent = p.birth_year || '-';
+            document.getElementById('db-height').textContent = (p.height_cm || '-') + ' cm';
+            document.getElementById('db-weight').textContent = (p.weight_kg || '-') + ' kg';
+            document.getElementById('db-waist').textContent = (p.waist_cm || '-') + ' cm';
+            document.getElementById('db-bmi').textContent = p.bmi ? p.bmi.toFixed(1) : '-';
+            document.getElementById('db-base').textContent = r.data.rule.base_calorie + ' kcal';
+
+            document.getElementById('in-cals').value = ctx.calories_burned_today || 0;
+            document.getElementById('in-cgm').value = ctx.avg_bg_last_2h ? ctx.avg_bg_last_2h.toFixed(1) : 5.5;
+
+            document.getElementById('calc-adj').textContent = ru.adjusted_target + ' kcal';
+            const dec = document.getElementById('calc-dec');
+            if (ru.low_bg_guard) { dec.innerHTML = '<span class="badge b-yellow">Low BG Guard</span>'; }
+            else if (ru.should_trigger) { dec.innerHTML = '<span class="badge b-red">Trigger Active</span>'; }
+            else { dec.innerHTML = '<span class="badge b-green">Target Met</span>'; }
+
+            await checkActiveTask();
+        }
+
+        async function pushTelemetry() {
+            liveLat = parseFloat(document.getElementById('in-lat').value);
+            liveLng = parseFloat(document.getElementById('in-lng').value);
+            const body = {
+                user_id: activeUser,
+                calories_burned: parseFloat(document.getElementById('in-cals').value),
+                cgm_value: parseFloat(document.getElementById('in-cgm').value),
+                lat: liveLat, lng: liveLng
+            };
+            log(`Pushing HR/CGM logs to PostgreSQL at lat=${liveLat}, lng=${liveLng}...`);
+            const r = await request('/internal/mock/sync-data', { method: 'POST', body: JSON.stringify(body) });
+            if (r.ok) { log("Device data synced successfully. Reloading view."); await loadUser(); }
+        }
+
+        async function clearTasks() {
+            log(`Clearing daily task guards for ${activeUser}...`, '#f59e0b');
+            const r = await request(`/internal/test/reset-tasks?user_id=${activeUser}`, { method: 'DELETE' });
+            if (r.ok) { log(`Reset complete. ${r.data.deleted} tasks removed.`); await loadUser(); }
+        }
+
+        // --- MIDDLE: ENGINE ---
+        async function runEngine() {
+            document.getElementById('btn-trigger').disabled = true;
+            log("Invoking task_agent.orchestrator...", "#c4b5fd");
+            const r = await request('/internal/agent/trigger', { method: 'POST', body: JSON.stringify({ user_id: activeUser }) });
+            if (r.ok) { log("Rule engine execution completed."); await checkActiveTask(); }
+            else { log(`Engine failed: ${JSON.stringify(r.data)}`, '#ef4444'); }
+            document.getElementById('btn-trigger').disabled = false;
+        }
+
+        // --- TASK STATE MACHINE ---
+        async function checkActiveTask() {
+            const r = await request(`/tasks/dynamic/active?user_id=${activeUser}`);
+            if (!r.ok || (!r.data.task && !r.data.task_status)) {
+                log("No active task pending.", "#94a3b8");
+                currentTask = null;
+                resetOutputUI();
+                return;
+            }
+
+            currentTask = r.data.task || r.data;
+            log(`Active task found. Status: ${currentTask.task_status}`);
+
+            if (currentTask.task_status === 'awaiting_selection') {
+                renderParks(currentTask.parks);
+            } else if (currentTask.task_status === 'pending') {
+                renderParks([]);
+                renderLLM(currentTask);
+                setupGPS(currentTask);
+            } else if (currentTask.task_status === 'completed') {
+                renderParks([]);
+                renderLLM(currentTask);
+                finishGPS();
             }
         }
-    }
 
-    async function selectDestination(index, lat, lng) {
-        log("logPanel1", `Waking up LangGraph agent for selection ${index}...`);
-        viewJson({status: "Calling LangChain Pipeline... please wait..."});
-        
-        const {ok, data} = await req(`/tasks/dynamic/${currentTaskId}/select-destination?user_id=${getUserId()}`, "POST", { park_index: index });
-        if (ok) {
-            log("logPanel1", "LangGraph processing complete. Content generated.");
-            fetchActiveTask();
-        } else {
-            viewJson(data);
+        function renderParks(parks) {
+            const pl = document.getElementById('park-list');
+            if (!parks || parks.length === 0) { pl.innerHTML = '<div class="empty-state">No dynamic parks requested.</div>'; return; }
+
+            pl.innerHTML = parks.map((p, i) => `
+    <div class="park-card" onclick="selectPark(${currentTask.task_id}, ${i})">
+      <h4>${p.name}</h4>
+      <div><span>📍 ${p.lat.toFixed(4)}, ${p.lng.toFixed(4)}</span> <span class="badge b-blue">${p.distance_m}m</span></div>
+    </div>
+  `).join('');
         }
-    }
 
-    async function arrive() {
-        if (!currentTaskId) return;
-        const lat = parseFloat(document.getElementById("arriveLat").value);
-        const lng = parseFloat(document.getElementById("arriveLng").value);
-        
-        const {ok, data} = await req(`/tasks/dynamic/${currentTaskId}/arrive`, "POST", { lat, lng });
-        viewJson(data);
-        if (ok && data.passed) {
-            document.getElementById("arrivalArea").classList.add("hidden");
-            setTimeout(fetchPoints, 1000);
+        async function selectPark(tid, idx) {
+            document.getElementById('llm-output').innerHTML = `<div class="empty-state" style="color:var(--p)">Sea-Lion Agent is reasoning...<br>(Analyst -> Advisor -> Writer)</div>`;
+            log(`Invoking Sea-Lion LLM LangGraph pipeline...`, '#c4b5fd');
+
+            const r = await request(`/tasks/dynamic/${tid}/select-destination?user_id=${activeUser}`, { method: 'POST', body: JSON.stringify({ park_index: idx }) });
+            if (r.ok) { log("Sea-Lion generated task content successfully!"); await checkActiveTask(); }
+            else { log(`LLM Error: ${JSON.stringify(r.data)}`, '#ef4444'); document.getElementById('llm-output').innerHTML = `<div class="empty-state" style="color:var(--r)">LLM Error. Check logs.</div>`; }
         }
-    }
 
-</script>
+        // --- RIGHT: LLM & VERIFY ---
+        function renderLLM(t) {
+            document.getElementById('llm-output').innerHTML = `
+    <div class="llm-box">
+      <div style="font-size:0.7rem; font-weight:700; color:#8b5cf6; text-transform:uppercase; margin-bottom:4px">Sea-Lion Output</div>
+      <h3>${t.title || 'Task Completed'}</h3>
+      <p>${t.body || 'You have arrived and earned your reward points!'}</p>
+      ${t.destination ? `<div style="margin-top:12px; font-size:0.8rem; font-weight:600; color:var(--p)">📍 Target: ${t.destination.name}</div>` : ''}
+    </div>
+  `;
+        }
+
+        function setupGPS(t) {
+            if (!t.destination) return;
+            destLat = t.destination.lat;
+            destLng = t.destination.lng;
+            // Get live coordinates from the input fields as the absolute starting point for simulation
+            liveLat = parseFloat(document.getElementById('in-lat').value);
+            liveLng = parseFloat(document.getElementById('in-lng').value);
+
+            initialDist = haversine(liveLat, liveLng, destLat, destLng);
+
+            document.getElementById('dist-total').textContent = initialDist;
+            document.getElementById('dist-curr').textContent = initialDist;
+            document.getElementById('p-fill').style.width = '0%';
+
+            const ts = document.getElementById('task-status');
+            ts.style.opacity = "1"; ts.className = "badge b-yellow"; ts.textContent = "Pending Arrival";
+
+            document.getElementById('btn-walk').style.display = "block";
+            document.getElementById('btn-stop').style.display = "none";
+        }
+
+        async function startWalk() {
+            document.getElementById('btn-walk').style.display = "none";
+            document.getElementById('btn-stop').style.display = "block";
+            document.getElementById('live-ind').style.visibility = "visible";
+            log("GPS Polling started. Moving towards target...");
+
+            walkInt = setInterval(async () => {
+                // Math: move 12% closer per tick
+                liveLat += (destLat - liveLat) * 0.12;
+                liveLng += (destLng - liveLng) * 0.12;
+
+                // Update live inputs so user sees the numbers changing
+                document.getElementById('in-lat').value = liveLat.toFixed(5);
+                document.getElementById('in-lng').value = liveLng.toFixed(5);
+
+                const r = await request(`/tasks/dynamic/${currentTask.task_id}/arrive`, { method: 'POST', body: JSON.stringify({ lat: liveLat, lng: liveLng }) });
+                if (!r.ok) { log("Arrival verify failed", "#ef4444"); return; }
+
+                const d = r.data.distance_m;
+                document.getElementById('dist-curr').textContent = d;
+
+                // Calculate progress percentage (0 to 100)
+                let pct = 0;
+                if (initialDist > 0) {
+                    pct = 100 - ((d / initialDist) * 100);
+                    pct = Math.max(0, Math.min(100, pct));
+                } else {
+                    pct = 100;
+                }
+                document.getElementById('p-fill').style.width = `${pct}%`;
+
+                log(`POST /arrive -> dist: ${d}m | passed: ${r.data.passed}`, "#fef08a");
+
+                if (r.data.passed) {
+                    log("Threshold breached (<200m). Task complete!", "#4ade80");
+                    finishGPS();
+                    // Refetch to get the LLM completion copy
+                    await checkActiveTask();
+                }
+            }, 1000);
+        }
+
+        function stopWalk() {
+            if (walkInt) { clearInterval(walkInt); walkInt = null; }
+            document.getElementById('btn-walk').style.display = "block";
+            document.getElementById('btn-stop').style.display = "none";
+            document.getElementById('live-ind').style.visibility = "hidden";
+            log("GPS Polling halted.", "#94a3b8");
+        }
+
+        function finishGPS() {
+            stopWalk();
+            const ts = document.getElementById('task-status');
+            ts.style.opacity = "1"; ts.className = "badge b-green"; ts.textContent = "Completed Verified";
+            document.getElementById('btn-walk').style.display = "none";
+            document.getElementById('btn-stop').style.display = "none";
+            document.getElementById('p-fill').style.width = '100%';
+            document.getElementById('p-fill').style.background = 'var(--g)';
+        }
+
+        function resetOutputUI() {
+            document.getElementById('park-list').innerHTML = '<div class="empty-state">Trigger the engine above to see dynamic park recommendations based on the pushed GPS coordinates.</div>';
+            document.getElementById('llm-output').innerHTML = '<div class="empty-state">Select a park destination from the middle column to trigger the Sea-Lion LLM task generation...</div>';
+            document.getElementById('btn-walk').style.display = "none";
+            document.getElementById('btn-stop').style.display = "none";
+            document.getElementById('live-ind').style.visibility = "hidden";
+            document.getElementById('dist-curr').textContent = "--";
+            document.getElementById('dist-total').textContent = "--";
+            document.getElementById('p-fill').style.width = "0%";
+            document.getElementById('p-fill').style.background = "var(--p)";
+            document.getElementById('task-status').style.opacity = "0";
+        }
+
+        window.onload = boot;
+    </script>
 </body>
+
 </html>

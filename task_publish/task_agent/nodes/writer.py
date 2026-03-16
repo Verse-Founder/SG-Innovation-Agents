@@ -1,10 +1,19 @@
 import json
+import re
 import logging
 from typing import Dict, Any
 
 from task_publish.task_agent.state import AgentState
 
 logger = logging.getLogger(__name__)
+
+def _extract_json(text: str) -> dict:
+    text = re.sub(r'^```[a-zA-Z]*\n?', '', text.strip(), flags=re.MULTILINE)
+    text = re.sub(r'```$', '', text.strip(), flags=re.MULTILINE)
+    m = re.search(r'\{[\s\S]+\}', text)
+    if m:
+        return json.loads(m.group())
+    raise ValueError(f"No JSON object found in writer output: {text[:200]}")
 
 WRITER_SYSTEM_PROMPT = """You are a warm, friendly health companion writing a mobile push notification
 for a diabetic user. You will receive:
@@ -55,7 +64,7 @@ Snack suggestion: {advice["snack_before_exercise"] or "none"}"""
             system=WRITER_SYSTEM_PROMPT,
             user=user_prompt,
         )
-        task_content = json.loads(response.text)
+        task_content = _extract_json(response.text)
         
         # Validate required keys
         assert "title" in task_content and "body" in task_content

@@ -180,8 +180,8 @@ class DynamicTaskLog(Base):
     task_content: Mapped[Dict[str, Any]] = mapped_column(JSON, nullable=False) # Maps nicely to JSON/TEXT behind scenes
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=_now)
     task_status: Mapped[str] = mapped_column(String(18), default="pending", nullable=False)
-    target_lat: Mapped[Optional[float]] = mapped_column(Numeric(10, 8))
-    target_lng: Mapped[Optional[float]] = mapped_column(Numeric(10, 8))
+    target_lat: Mapped[Optional[float]] = mapped_column(Numeric(10, 6))
+    target_lng: Mapped[Optional[float]] = mapped_column(Numeric(10, 6))
     completed_at: Mapped[Optional[datetime]] = mapped_column(DateTime)
     expires_at: Mapped[Optional[datetime]] = mapped_column(DateTime) # matched schema to our logical expires_at
     reward_points: Mapped[int] = mapped_column(Integer, default=0)

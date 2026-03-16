@@ -1,4 +1,5 @@
 import json
+import re
 import logging
 from datetime import date
 from typing import Dict, Any
@@ -11,6 +12,17 @@ import redis as pyredis
 redis = pyredis.from_url(settings.redis_url, decode_responses=True)
 
 logger = logging.getLogger(__name__)
+
+def _extract_json(text: str) -> dict:
+    """Robustly extract a JSON object from model output, even if wrapped in markdown code fences."""
+    # Strip markdown code fences (```json ... ``` or ``` ... ```)
+    text = re.sub(r'^```[a-zA-Z]*\n?', '', text.strip(), flags=re.MULTILINE)
+    text = re.sub(r'```$', '', text.strip(), flags=re.MULTILINE)
+    # Find first { ... } block
+    m = re.search(r'\{[\s\S]+\}', text)
+    if m:
+        return json.loads(m.group())
+    raise ValueError(f"No JSON object found in model output: {text[:200]}")
 
 ADVISOR_SYSTEM_PROMPT = """# Identity
 You are an exercise advisor embedded in a diabetes management app.
@@ -86,7 +98,7 @@ Recommend a walking exercise for this user going to {summary["selected_park_name
             system=ADVISOR_SYSTEM_PROMPT,
             user=user_prompt,
         )
-        advice = json.loads(response.text)
+        advice = _extract_json(response.text)
         
         try:
             redis.setex(cache_key, 86400, json.dumps(advice))  # TTL = 24h

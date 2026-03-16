@@ -39,8 +39,10 @@ def calculate(ctx: Dict[str, Any], rule: Dict[str, Any]) -> Dict[str, Any]:
     should_trigger = ratio < float(rule.get("trigger_threshold", 0.60))
     deficit_kcal = max(0, int(target - actual))
     
+    low_bg_guard = avg_bg is not None and avg_bg < 5.0
     return {
         "should_trigger": should_trigger,
         "deficit_kcal": deficit_kcal,
-        "adjusted_target": int(target)
+        "adjusted_target": int(target),
+        "low_bg_guard": low_bg_guard
     }
