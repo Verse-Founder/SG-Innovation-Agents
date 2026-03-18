@@ -534,6 +534,13 @@
 
             document.getElementById('in-cals').value = ctx.calories_burned_today || 0;
             document.getElementById('in-cgm').value = ctx.avg_bg_last_2h ? ctx.avg_bg_last_2h.toFixed(1) : 5.5;
+            // Fill GPS from last known position in DB
+            if (ctx.last_gps) {
+                liveLat = ctx.last_gps.lat;
+                liveLng = ctx.last_gps.lng;
+                document.getElementById('in-lat').value = liveLat.toFixed(4);
+                document.getElementById('in-lng').value = liveLng.toFixed(4);
+            }
 
             document.getElementById('calc-adj').textContent = ru.adjusted_target + ' kcal';
             const dec = document.getElementById('calc-dec');
@@ -567,9 +574,37 @@
         // --- MIDDLE: ENGINE ---
         async function runEngine() {
             document.getElementById('btn-trigger').disabled = true;
-            log("Invoking task_agent.orchestrator...", "#c4b5fd");
+            log("Running Rule Engine evaluation...", "#c4b5fd");
+
+            // Step 1: re-fetch current rule result from DB
+            const ctx_r = await request(`/internal/user-context/${activeUser}`);
+            if (!ctx_r.ok) {
+                log(`Failed to fetch rule context: ${JSON.stringify(ctx_r.data)}`, '#ef4444');
+                document.getElementById('btn-trigger').disabled = false;
+                return;
+            }
+            const ru = ctx_r.data.rule_result;
+
+            // Update Engine Decision badge based on backend result
+            const dec = document.getElementById('calc-dec');
+            if (ru.low_bg_guard) {
+                dec.innerHTML = '<span class="badge b-yellow">⛔ Low BG Safeguard Active</span>';
+                log(`[Rule Engine] Low BG Safeguard triggered for ${activeUser}. No task will be issued.`, '#f59e0b');
+                document.getElementById('btn-trigger').disabled = false;
+                return;  // Do NOT call orchestrator
+            }
+            if (!ru.should_trigger) {
+                dec.innerHTML = '<span class="badge b-green">✅ Enough Exercise — No Task</span>';
+                log(`[Rule Engine] ${activeUser} already met today's target (${ru.adjusted_target} kcal). No task needed.`, '#4ade80');
+                document.getElementById('btn-trigger').disabled = false;
+                return;  // Do NOT call orchestrator
+            }
+
+            // Only Bob (should_trigger=true, no low_bg_guard) reaches here
+            dec.innerHTML = '<span class="badge b-red">🔴 Trigger Active</span>';
+            log(`[Rule Engine] Deficit detected (${ru.deficit_kcal} kcal). Invoking orchestrator + Maps API...`, '#c4b5fd');
             const r = await request('/internal/agent/trigger', { method: 'POST', body: JSON.stringify({ user_id: activeUser }) });
-            if (r.ok) { log("Rule engine execution completed."); await checkActiveTask(); }
+            if (r.ok) { log("Orchestrator complete. Park candidates loaded."); await checkActiveTask(); }
             else { log(`Engine failed: ${JSON.stringify(r.data)}`, '#ef4444'); }
             document.getElementById('btn-trigger').disabled = false;
         }

@@ -29,18 +29,32 @@ def find_nearby_parks(db: Session, lat: float, lng: float, user_id: str, radius_
             
             data = resp.json()
             if data.get("status") == "OK":
-                results = data.get("results", [])
-                
-                for r in results[:3]:
+                all_results = data.get("results", [])
+                candidates = []
+                unique_coords = set()
+
+                for r in all_results:
                     p_lat = r["geometry"]["location"]["lat"]
                     p_lng = r["geometry"]["location"]["lng"]
+                    dist = int(haversine(lat, lng, p_lat, p_lng))
                     
-                    parks.append({
-                        "name": r.get("name", "Nearby park"),
-                        "lat": p_lat,
-                        "lng": p_lng,
-                        "distance_m": int(haversine(lat, lng, p_lat, p_lng))
-                    })
+                    # Round coords to avoid nearly identical points
+                    coord_key = (round(p_lat, 4), round(p_lng, 4))
+                    
+                    # Filter: ignore places too close (< 500m) to ensure a real walk
+                    # and avoid duplicates at the same spot
+                    if dist > 500 and coord_key not in unique_coords:
+                        candidates.append({
+                            "name": r.get("name", "Nearby park"),
+                            "lat": p_lat,
+                            "lng": p_lng,
+                            "distance_m": dist
+                        })
+                        unique_coords.add(coord_key)
+                
+                # Sort by distance: prioritize those closest to 1.2km (ideal walk)
+                candidates.sort(key=lambda x: abs(x["distance_m"] - 1200))
+                parks = candidates[:3]
             else:
                 logger.error(f"Google Places API Error: {data.get('status')} - {data.get('error_message', '')}")
                 

@@ -8,11 +8,21 @@ from task_publish.task_agent.state import AgentState
 logger = logging.getLogger(__name__)
 
 def _extract_json(text: str) -> dict:
+    if not text:
+        raise ValueError("Empty response text from LLM")
+        
     text = re.sub(r'^```[a-zA-Z]*\n?', '', text.strip(), flags=re.MULTILINE)
     text = re.sub(r'```$', '', text.strip(), flags=re.MULTILINE)
-    m = re.search(r'\{[\s\S]+\}', text)
-    if m:
-        return json.loads(m.group())
+    
+    start = text.find('{')
+    end = text.rfind('}')
+    if start != -1 and end != -1:
+        json_str = text[start:end+1]
+        try:
+            return json.loads(json_str)
+        except json.JSONDecodeError as jde:
+            raise ValueError(f"JSON decode error: {jde}. Raw snippet: {json_str[:100]}")
+            
     raise ValueError(f"No JSON object found in writer output: {text[:200]}")
 
 WRITER_SYSTEM_PROMPT = """You are a warm, friendly health companion writing a mobile push notification
@@ -45,6 +55,10 @@ No markdown. No explanation. Only valid JSON."""
 
 async def writer_node(state: AgentState) -> Dict[str, Any]:
     from task_publish.task_agent.llm import llm_writer
+    import time as _time
+    _t0 = _time.time()
+    print(f"[{_time.strftime('%H:%M:%S')}] [Writer] ENTER user={state.get('user_id')}")
+    print(f"--- [DEBUG] Entering Writer Node for user: {state.get('user_id')} ---")
 
     advice  = state["exercise_advice"]
     summary = state["health_summary"]
@@ -65,13 +79,15 @@ Snack suggestion: {advice["snack_before_exercise"] or "none"}"""
             user=user_prompt,
         )
         task_content = _extract_json(response.text)
-        
         # Validate required keys
         assert "title" in task_content and "body" in task_content
+        print(f"[{_time.strftime('%H:%M:%S')}] [Writer] OK elapsed={_time.time()-_t0:.1f}s")
         return {"task_content": task_content}
 
     except Exception as e:
-        logger.error(f"writer_node error: {str(e)}")
+        err_reason = str(e)
+        logger.error(f"writer_node error: {err_reason}")
+        print(f"[{_time.strftime('%H:%M:%S')}] [Writer] FALLBACK after {_time.time()-_t0:.1f}s reason={err_reason[:80]}")
         # Fallback: construct minimal English copy from advice fields
         return {"task_content": {
             "title": f"Time for a walk, {summary['user_name']}!",
@@ -79,4 +95,5 @@ Snack suggestion: {advice["snack_before_exercise"] or "none"}"""
                       f"{advice['duration_min']}-minute walk. "
                       f"{advice['personalized_tip']}"),
             "cta":   "I have arrived",
+            "_fallback_reason": err_reason[:120],
         }}

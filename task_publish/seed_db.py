@@ -46,13 +46,12 @@ def seed_db():
             ended_at=datetime.utcnow() - timedelta(hours=2, minutes=15),
             calories_burned=400.0, avg_heart_rate=145
         ))
-        # Normal BG
         db.add(UserCgmLog(
-            user_id=active_user_id, recorded_at=datetime.utcnow() - timedelta(minutes=10), glucose=6.5
+            user_id=active_user_id, recorded_at=datetime.utcnow() - timedelta(minutes=10), glucose=5.5
         ))
         db.add(UserHrLog(
             user_id=active_user_id, recorded_at=datetime.utcnow() - timedelta(minutes=5),
-            heart_rate=75, gps_lat=1.3521, gps_lng=103.8198
+            heart_rate=75, gps_lat=1.2838, gps_lng=103.8511  # Kallang / East Coast
         ))
 
         print("Seeding Case 2: Sedentary User (SHOULD trigger dynamic tasks)")
@@ -73,14 +72,13 @@ def seed_db():
             ended_at=datetime.utcnow() - timedelta(hours=4, minutes=50),
             calories_burned=50.0, avg_heart_rate=100
         ))
-        # Normal BG (if < 5.0 it would reduce target safely, let's keep it normal)
         db.add(UserCgmLog(
             user_id=sedentary_user_id, recorded_at=datetime.utcnow() - timedelta(minutes=10), glucose=7.2
         ))
-        # GPS in CBD
+        # GPS in CBD / Marina Bay area
         db.add(UserHrLog(
             user_id=sedentary_user_id, recorded_at=datetime.utcnow() - timedelta(minutes=5),
-            heart_rate=80, gps_lat=1.2838, gps_lng=103.8511
+            heart_rate=80, gps_lat=1.3521, gps_lng=103.8198  # CBD / Marina Bay
         ))
 
         print("Seeding Case 3: Hypoglycemia Risk User (Safety Guard Triggered)")
