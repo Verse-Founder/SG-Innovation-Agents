@@ -52,7 +52,7 @@ task_publish/
 ### 1. Prerequisites
 - Python 3.10+
 - PostgreSQL
-- API Keys: Sea-Lion, Google Maps, Gemini
+- API Keys: Sea-Lion, Google Maps
 
 ### 2. Setup
 ```bash
@@ -73,7 +73,6 @@ Create a `.env` file based on `.env.example`:
 ```env
 SEA_LION_API_KEY="your_key"
 GOOGLE_MAPS_API_KEY="your_key"
-GEMINI_API_KEY="your_key"
 DATABASE_URL="postgresql+psycopg2://user:password@localhost/task_publish"
 ```
 
