@@ -31,20 +31,20 @@ The DTP Agent leverages real-time health telemetry (CGM, Apple Watch) to deliver
 
 ## 📦 Project Structure
 
-```text
-task_publish/
-├── api/                # FastAPI routes (Dynamic Tasks, Routine Tasks)
-├── config/             # Configuration & Environment loading
-├── db/                 # Models, Migrations, and Session management
-├── task_agent/         # Core AI Logic
-│   ├── nodes/          # LangGraph Nodes (Analyst, Advisor, Writer)
-│   ├── graph.py        # LangGraph Orchestration
-│   ├── rule_engine.py  # Clinical decision logic
-│   └── map_tool.py     # Google Maps integration
-├── sea_lion_client.py  # Custom LLM API Client
-├── seed_db.py          # Database seeding script for demo users
-├── main.py             # Application entry point
-└── demo_console.html   # Sandbox testing interface
+├── frontend/           # Sandbox testing interface
+│   └── demo_console.html
+├── task_publish/       # Core Backend & Agent Logic
+│   ├── api/            # FastAPI routes (Dynamic Tasks, Routine Tasks)
+│   ├── config/         # Configuration & Environment loading
+│   ├── db/             # Models, Migrations, and Session management
+│   ├── task_agent/     # Core AI Logic
+│   │   ├── nodes/      # LangGraph Nodes (Analyst, Advisor, Writer)
+│   │   ├── graph.py    # LangGraph Orchestration
+│   │   ├── rule_engine.py # Clinical decision logic
+│   │   └── map_tool.py    # Google Maps integration
+│   ├── sea_lion_client.py # Custom LLM API Client
+│   ├── seed_db.py      # Database seeding script for demo users
+│   └── main.py         # Application entry point
 ```
 
 ## 🚦 Getting Started
@@ -58,7 +58,7 @@ task_publish/
 ```bash
 # Clone the repository
 git clone <repo-url>
-cd task_publish
+cd SG-Innovation-Agents/task_publish
 
 # Create virtual environment
 python3 -m venv .venv
@@ -69,23 +69,23 @@ pip install -r requirements.txt
 ```
 
 ### 3. Environment Variables
-Create a `.env` file based on `.env.example`:
+Create a `.env` file inside `task_publish/` based on `.env.example`:
 ```env
 SEA_LION_API_KEY="your_key"
 GOOGLE_MAPS_API_KEY="your_key"
 DATABASE_URL="postgresql+psycopg2://user:password@localhost/task_publish"
 ```
 
-### 4. Seed Database
+### 4. Seed Database (From task_publish/ directory)
 ```bash
 python seed_db.py
 ```
 
-### 5. Run Server
+### 5. Run Server (From task_publish/ directory)
 ```bash
 uvicorn main:app --reload
 ```
-Open `demo_console.html` in your browser to start simulating users (Bob, Alice, Charlie).
+Open `frontend/demo_console.html` in your browser to start simulating users (Bob, Alice, Charlie).
 
 ## 📄 License
 This project is part of the SG Innovation Initiative. See LICENSE for details.
